@@ -1,0 +1,332 @@
+
+<h2 class="sr-only">Live Dashboard ข้อมูล Conveyor Belt จาก Google Sheets Data PUR อัปเดตอัตโนมัติจาก Sheet จริง</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.wrap { padding: 1rem 0; font-family: var(--font-sans); }
+.top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 8px; }
+.db-title { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
+.sync-btn { font-size: 12px; padding: 6px 14px; border-radius: var(--border-radius-md); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.sync-status { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.sync-status span { font-weight: 500; }
+.loading-box { text-align: center; padding: 3rem 1rem; color: var(--color-text-secondary); font-size: 14px; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--color-border-tertiary); border-top-color: #185FA5; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-box { background: #FCEBEB; border: 0.5px solid #F09595; border-radius: var(--border-radius-md); padding: 14px 16px; font-size: 13px; color: #791F1F; margin-bottom: 1rem; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+.metric-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px; }
+.metric-val { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.metric-unit { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+.chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 16px; }
+.chart-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; font-size: 11px; color: var(--color-text-secondary); }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 3px; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.filter-row label { font-size: 12px; color: var(--color-text-secondary); }
+select { font-size: 12px; padding: 5px 8px; border-radius: var(--border-radius-md); max-width: 140px; }
+.tbl-wrap { overflow-x: auto; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); max-height: 400px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: var(--color-background-secondary); color: var(--color-text-secondary); font-weight: 500; padding: 8px 10px; text-align: left; font-size: 11px; border-bottom: 0.5px solid var(--color-border-tertiary); position: sticky; top: 0; cursor: pointer; white-space: nowrap; z-index: 1; }
+th:hover { color: var(--color-text-primary); }
+td { padding: 7px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); white-space: nowrap; font-size: 12px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+.badge-sc { background: #E6F1FB; color: #0C447C; }
+.badge-fa { background: #EAF3DE; color: #3B6D11; }
+.num { text-align: right; }
+.row-count { font-size: 12px; color: var(--color-text-secondary); margin-left: auto; }
+.sort-arr { font-size: 9px; margin-left: 2px; }
+</style>
+
+<div class="wrap">
+  <div class="top-bar">
+    <div class="db-title">Conveyor Belt Dashboard</div>
+    <button class="sync-btn" onclick="loadData()">
+      <span id="syncIcon">↻</span> รีเฟรชข้อมูล
+    </button>
+  </div>
+  <div class="sync-status">Sheet: Data PUR &nbsp;|&nbsp; อัปเดตล่าสุด: <span id="lastSync">—</span></div>
+
+  <div id="loadingBox" class="loading-box"><span class="spinner"></span>กำลังโหลดข้อมูลจาก Google Sheets...</div>
+  <div id="errorBox" class="error-box" style="display:none"></div>
+
+  <div id="mainContent" style="display:none">
+    <div class="metrics" id="metrics"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">จำนวนเมตรแยกตามปี</div>
+        <div class="legend" id="legendYear"></div>
+        <div style="position:relative;height:200px;"><canvas id="chartYear" role="img" aria-label="Bar chart meters by year">Meters per year</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">สัดส่วน Type of Belt</div>
+        <div class="legend" id="legendType"></div>
+        <div style="position:relative;height:200px;"><canvas id="chartType" role="img" aria-label="Donut chart belt type">Belt type proportion</canvas></div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <label>ปี:</label><select id="fYear"><option value="">ทั้งหมด</option></select>
+      <label>ยี่ห้อ:</label><select id="fBrand"><option value="">ทั้งหมด</option></select>
+      <label>Type:</label><select id="fType"><option value="">ทั้งหมด</option></select>
+      <label>เครื่องจักร:</label><select id="fMachine"><option value="">ทั้งหมด</option></select>
+      <span class="row-count" id="rowCount"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const SHEET_ID = '14GmKP362tbU17eAAY-dYy37T_Iqtwga4HSULdPntyQ0';
+const GID = '0';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+let allData = [], headers = [];
+let sortCol = -1, sortAsc = true;
+let chartYear = null, chartType = null;
+
+const COLORS = ['#185FA5','#0F6E56','#BA7517','#993556','#533AB7','#D85A30','#3B6D11','#A32D2D','#0F6E56','#633806'];
+
+function fmt(n) {
+  const num = parseFloat(n);
+  if (isNaN(num)) return n || '';
+  return new Intl.NumberFormat('th-TH').format(Math.round(num));
+}
+
+function parseCSV(text) {
+  const lines = [];
+  let cur = '', inQ = false;
+  const cells = [];
+  const rows = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') { inQ = !inQ; continue; }
+    if (c === ',' && !inQ) { cells.push(cur.trim()); cur = ''; continue; }
+    if ((c === '\n' || c === '\r') && !inQ) {
+      if (cur.trim() || cells.length) { cells.push(cur.trim()); rows.push([...cells]); cells.length = 0; cur = ''; }
+      if (c === '\r' && text[i+1] === '\n') i++;
+      continue;
+    }
+    cur += c;
+  }
+  if (cur.trim() || cells.length) { cells.push(cur.trim()); rows.push([...cells]); }
+  return rows;
+}
+
+function unique(arr, idx) {
+  return [...new Set(arr.map(r => r[idx]).filter(v => v !== undefined && v !== ''))].sort((a,b) => {
+    const na = parseFloat(a), nb = parseFloat(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return String(a).localeCompare(String(b), 'th');
+  });
+}
+
+function getColIdx(name) {
+  return headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+}
+
+async function loadData() {
+  const syncIcon = document.getElementById('syncIcon');
+  syncIcon.style.animation = 'spin 0.8s linear infinite';
+  syncIcon.style.display = 'inline-block';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('loadingBox').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'none';
+
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error('ไม่พบข้อมูลใน Sheet');
+
+    headers = rows[0];
+    allData = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+    buildFilters();
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('lastSync').textContent = new Date().toLocaleString('th-TH');
+    render();
+  } catch (e) {
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('errorBox').innerHTML = `
+      <strong>โหลดข้อมูลไม่สำเร็จ</strong><br>
+      ${e.message}<br><br>
+      <small>ตรวจสอบว่า Google Sheet ตั้งค่า "Anyone with the link can view" แล้ว</small>
+    `;
+  }
+  syncIcon.style.animation = '';
+}
+
+function buildFilters() {
+  const iYear = getColIdx('year');
+  const iBrand = getColIdx('ยี่ห้อ');
+  const iType = getColIdx('type');
+  const iMachine = getColIdx('เครื่องจักร');
+
+  function fillSelect(id, idx) {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    unique(allData, idx).forEach(v => {
+      const o = document.createElement('option');
+      o.value = o.text = v;
+      sel.appendChild(o);
+    });
+    sel.value = cur;
+  }
+  fillSelect('fYear', iYear);
+  fillSelect('fBrand', iBrand);
+  fillSelect('fType', iType);
+  fillSelect('fMachine', iMachine);
+
+  ['fYear','fBrand','fType','fMachine'].forEach(id => {
+    document.getElementById(id).onchange = render;
+  });
+
+  const thead = document.getElementById('thead');
+  thead.innerHTML = headers.map((h,i) => 
+    `<th onclick="sortBy(${i})">${h}<span class="sort-arr" id="sa${i}"></span></th>`
+  ).join('');
+}
+
+function getFiltered() {
+  const fy = document.getElementById('fYear').value;
+  const fb = document.getElementById('fBrand').value;
+  const ft = document.getElementById('fType').value;
+  const fm = document.getElementById('fMachine').value;
+  const iYear = getColIdx('year');
+  const iBrand = getColIdx('ยี่ห้อ');
+  const iType = getColIdx('type');
+  const iMachine = getColIdx('เครื่องจักร');
+  return allData.filter(r =>
+    (!fy || r[iYear] == fy) &&
+    (!fb || r[iBrand] == fb) &&
+    (!ft || r[iType] == ft) &&
+    (!fm || r[iMachine] == fm)
+  );
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  render();
+}
+
+function render() {
+  let data = getFiltered();
+  if (sortCol >= 0) {
+    data = [...data].sort((a, b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      const na = parseFloat(av), nb = parseFloat(bv);
+      if (!isNaN(na) && !isNaN(nb)) return sortAsc ? na - nb : nb - na;
+      return sortAsc ? String(av).localeCompare(String(bv), 'th') : String(bv).localeCompare(String(av), 'th');
+    });
+  }
+
+  headers.forEach((_, i) => {
+    const el = document.getElementById('sa' + i);
+    if (el) el.textContent = sortCol === i ? (sortAsc ? '▲' : '▼') : '';
+  });
+
+  const iQty = getColIdx('จำนวน');
+  const iTotal = getColIdx('ราคารวม');
+  const iType = getColIdx('type');
+  const iBrand = getColIdx('ยี่ห้อ');
+  const iYear = getColIdx('year');
+  const iUnitPrice = getColIdx('ราคาต่อหน่วย');
+  const iLink = getColIdx('link');
+
+  const totalM = data.reduce((s,r) => s + (parseFloat(r[iQty]) || 0), 0);
+  const totalV = data.reduce((s,r) => s + (parseFloat(r[iTotal]) || 0), 0);
+  const brandCount = unique(data, iBrand).length;
+  const avgUnit = totalM > 0 ? totalV / totalM : 0;
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">รายการทั้งหมด</div><div class="metric-val">${data.length}</div><div class="metric-unit">รายการ</div></div>
+    <div class="metric"><div class="metric-label">จำนวนรวม</div><div class="metric-val">${fmt(totalM)}</div><div class="metric-unit">เมตร</div></div>
+    <div class="metric"><div class="metric-label">มูลค่ารวม</div><div class="metric-val">${(totalV/1e6).toFixed(1)}</div><div class="metric-unit">ล้านบาท</div></div>
+    <div class="metric"><div class="metric-label">ยี่ห้อที่ใช้</div><div class="metric-val">${brandCount}</div><div class="metric-unit">ยี่ห้อ</div></div>
+  `;
+
+  document.getElementById('rowCount').textContent = `แสดง ${data.length} รายการ`;
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = data.map(r => {
+    const typeVal = r[iType] || '';
+    const isSteel = typeVal.toLowerCase().includes('steel');
+    const typeBadge = typeVal ? `<span class="badge ${isSteel ? 'badge-sc' : 'badge-fa'}">${isSteel ? 'Steel' : 'Fabric'}</span>` : '';
+    const linkVal = iLink >= 0 ? r[iLink] : '';
+    const linkCell = linkVal && linkVal.startsWith('http')
+      ? `<a href="${linkVal}" style="color:#185FA5;font-size:11px;">เปิด PDF</a>`
+      : (linkVal || '');
+    return '<tr>' + r.map((cell, ci) => {
+      if (ci === iType) return `<td>${typeBadge}</td>`;
+      if (iLink >= 0 && ci === iLink) return `<td>${linkCell}</td>`;
+      const isNum = !isNaN(parseFloat(cell)) && cell !== '';
+      const isPrice = headers[ci] && (headers[ci].includes('ราคา') || headers[ci].includes('จำนวน'));
+      return `<td ${isPrice && isNum ? 'class="num"' : ''}>${isPrice && isNum ? fmt(cell) : (cell || '')}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+
+  const yearMap = {};
+  data.forEach(r => { const y = r[iYear]; if(y) yearMap[y] = (yearMap[y]||0) + (parseFloat(r[iQty])||0); });
+  const years = Object.keys(yearMap).sort();
+  const yVals = years.map(y => yearMap[y]);
+  const barColors = years.map((_,i) => COLORS[i % COLORS.length]);
+
+  document.getElementById('legendYear').innerHTML = years.map((y,i) =>
+    `<span style="display:flex;align-items:center;gap:3px;"><span class="leg-dot" style="background:${barColors[i]}"></span>${y}</span>`
+  ).join('');
+
+  if (chartYear) chartYear.destroy();
+  chartYear = new Chart(document.getElementById('chartYear'), {
+    type: 'bar',
+    data: { labels: years, datasets: [{ data: yVals, backgroundColor: barColors, borderRadius: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font:{size:11}, color:'#888' }, grid: { display: false } },
+        y: { ticks: { font:{size:10}, color:'#888', callback: v => (v/1000).toFixed(0)+'k' }, grid: { color:'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+
+  const typeMap = {};
+  data.forEach(r => { const t = r[iType]; if(t) typeMap[t] = (typeMap[t]||0) + (parseFloat(r[iQty])||0); });
+  const typeKeys = Object.keys(typeMap);
+  const typeVals = typeKeys.map(k => typeMap[k]);
+  const typeColors = ['#185FA5','#0F6E56','#BA7517','#993556'];
+
+  document.getElementById('legendType').innerHTML = typeKeys.map((t,i) =>
+    `<span style="display:flex;align-items:center;gap:3px;"><span class="leg-dot" style="background:${typeColors[i%4]}"></span>${t} (${fmt(typeMap[t])}ม.)</span>`
+  ).join('');
+
+  if (chartType) chartType.destroy();
+  chartType = new Chart(document.getElementById('chartType'), {
+    type: 'doughnut',
+    data: { labels: typeKeys, datasets: [{ data: typeVals, backgroundColor: typeColors, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)} ม.` } }
+      }
+    }
+  });
+}
+
+loadData();
+</script>

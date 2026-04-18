@@ -719,35 +719,6 @@ function renderBeltCharts(data){
   ['cBeltLenCum','cBeltValCum'].forEach(k=>killChart(k));
 }
 
-// ── Custom plugin: show value labels at end of horizontal bars ──
-const hBarLabelPlugin = {
-  id: 'hBarLabel',
-  afterDatasetsDraw(chart) {
-    const ctx = chart.ctx;
-    chart.data.datasets.forEach((ds, di) => {
-      const meta = chart.getDatasetMeta(di);
-      if (meta.hidden) return;
-      meta.data.forEach((bar, idx) => {
-        const val = ds.data[idx];
-        if (val === null || val === undefined || val === 0) return;
-        const isLen = di === 0;
-        const label = isLen
-          ? new Intl.NumberFormat('th-TH').format(Math.round(val)) + ' ม.'
-          : val.toFixed(2) + ' M฿';
-        ctx.save();
-        ctx.font = '500 11px Sarabun, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        // bar.x = right edge of bar
-        ctx.fillText(label, bar.x + 6, bar.y);
-        ctx.restore();
-      });
-    });
-  }
-};
-Chart.register(hBarLabelPlugin);
-
 loadData();
 </script>
 </body>

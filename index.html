@@ -10,7 +10,7 @@
 :root {
   --bg-base:#0d0f14; --bg-panel:#13161e; --bg-card:#181c27; --bg-hover:#1e2333;
   --accent:#f07c1f; --accent-dim:rgba(240,124,31,0.15); --accent2:#3b9ede;
-  --success:#2ecc71; --danger:#e74c3c;
+  --success:#2ecc71; --danger:#e74c3c; --purple:#9b59b6;
   --border:rgba(255,255,255,0.07); --border-acc:rgba(240,124,31,0.4);
   --text-1:#eef0f5; --text-2:#8b90a0; --text-3:#545968;
   --r:10px; --rl:14px;
@@ -21,6 +21,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px);
   background-size:40px 40px;}
 .app{position:relative;z-index:1;max-width:1460px;margin:0 auto;padding:24px 28px 56px;}
+
+/* HEADER */
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:14px;}
 .hleft{display:flex;align-items:center;gap:16px;}
 .htitle h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;letter-spacing:2px;color:var(--text-1);text-transform:uppercase;line-height:1.1;}
@@ -33,34 +35,65 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .rbtn:hover{background:rgba(240,124,31,0.28);}
 .rbtn.spinning .rico{animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.statusbar{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3);margin-bottom:22px;letter-spacing:0.3px;}
+
+/* STATUS */
+.statusbar{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3);margin-bottom:22px;}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(--text-3);}
 .sdot.live{background:var(--success);box-shadow:0 0 5px var(--success);animation:pulse 2s infinite;}
 .sdot.err{background:var(--danger);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* LOADING / ERROR */
 .lscreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:16px;}
 .loader{width:38px;height:38px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
 .lscreen p{color:var(--text-2);font-size:13px;}
 .errscreen{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:var(--rl);padding:24px;display:none;}
 .errscreen h3{color:#e74c3c;font-family:'Rajdhani',sans-serif;font-size:18px;margin-bottom:10px;}
 .errscreen pre{color:var(--text-2);font-size:12px;line-height:1.7;white-space:pre-wrap;font-family:'Sarabun',sans-serif;}
-.mgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:22px;}
+
+/* SECTION LABEL */
+.section-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1.5px;margin:28px 0 14px;display:flex;align-items:center;gap:10px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* METRIC CARDS */
+.mgrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:16px;}
+.mgrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px;}
 .mc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s;}
 .mc:hover{border-color:rgba(255,255,255,.13);}
 .mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .a1::before{background:var(--accent);}
 .a2::before{background:var(--accent2);}
 .a3::before{background:var(--success);}
-.mico{font-size:18px;margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;}
+.a4::before{background:var(--danger);}
+.a5::before{background:var(--purple);}
+.mico{font-size:17px;margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;}
 .a1 .mico{background:var(--accent-dim);}
 .a2 .mico{background:rgba(59,158,222,.12);}
 .a3 .mico{background:rgba(46,204,113,.12);}
+.a4 .mico{background:rgba(231,76,60,.12);}
+.a5 .mico{background:rgba(155,89,182,.12);}
 .mlbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
-.mval{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;line-height:1;}
+.mval{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1;}
 .a1 .mval{color:var(--accent);}
 .a2 .mval{color:var(--accent2);}
 .a3 .mval{color:var(--success);}
+.a4 .mval{color:var(--danger);}
+.a5 .mval{color:#b07fd4;}
 .munit{font-size:10px;color:var(--text-3);margin-top:5px;}
+/* Comparison card */
+.mc-compare{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px;}
+.mc-compare .side{display:flex;flex-direction:column;gap:2px;}
+.mc-compare .side.right{text-align:right;align-items:flex-end;}
+.side-lbl{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;}
+.side-val{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;}
+.side-unit{font-size:9px;color:var(--text-3);}
+.vs-divider{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.vs-badge{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-3);padding:3px 6px;border-radius:4px;}
+.vs-ratio{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;}
+.proj-val{color:var(--danger);}
+.norm-val{color:var(--accent2);}
+
+/* PANELS */
 .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:16px;}
 .row2{display:flex;gap:14px;margin-bottom:16px;}
 .row2 .panel{flex:1;margin-bottom:0;}
@@ -72,6 +105,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .legend span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-2);}
 .lsq{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* BELT TYPE SELECTOR */
+.belt-selector{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;align-items:center;}
+.belt-selector-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-right:4px;white-space:nowrap;}
+.belt-btn{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:.5px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-2);cursor:pointer;transition:all .18s;text-transform:uppercase;}
+.belt-btn:hover{border-color:rgba(240,124,31,.4);color:var(--accent);}
+.belt-btn.active{background:var(--accent-dim);border-color:var(--border-acc);color:var(--accent);}
+
+/* FILTER */
 .fsect{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--rl);padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .flbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
 .fdiv{width:1px;height:20px;background:var(--border);flex-shrink:0;}
@@ -81,6 +123,8 @@ select{background:var(--bg-card);border:1px solid var(--border);color:var(--text
 select:hover,select:focus{border-color:rgba(240,124,31,.4);}
 .rcount{margin-left:auto;font-size:11px;color:var(--text-3);font-family:'Rajdhani',sans-serif;letter-spacing:.5px;white-space:nowrap;}
 .rcount strong{color:var(--accent);}
+
+/* TABLE */
 .twrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
 .tscroll{overflow-x:auto;max-height:420px;overflow-y:auto;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -102,17 +146,17 @@ a.lpdf:hover{opacity:1;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px;}
-.section-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1.5px;margin:24px 0 12px;display:flex;align-items:center;gap:10px;}
-.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .fi{animation:fadeUp .35s ease both;}
 .fi:nth-child(1){animation-delay:0s}.fi:nth-child(2){animation-delay:.06s}.fi:nth-child(3){animation-delay:.12s}
-@media(max-width:900px){.mgrid{grid-template-columns:1fr 1fr;}.row2{flex-direction:column;}}
+@media(max-width:960px){.mgrid3,.mgrid2{grid-template-columns:1fr 1fr;}.row2{flex-direction:column;}}
+@media(max-width:600px){.app{padding:14px;}.mgrid3,.mgrid2{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <div class="app">
 
+  <!-- HEADER -->
   <header class="header">
     <div class="hleft">
       <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
@@ -172,47 +216,87 @@ a.lpdf:hover{opacity:1;}
   </div>
 
   <div id="main" style="display:none">
-    <div class="mgrid" id="mgrid"></div>
 
-    <div class="section-label">การสั่งซื้อ: เริ่มโครงการ vs. ปกติ</div>
+    <!-- ── SECTION 1: OVERVIEW METRICS ── -->
+    <div class="section-label">ภาพรวมการจัดซื้อ</div>
+    <div class="mgrid3" id="mgrid"></div>
+
+    <!-- ── SECTION 2: COMPARISON CARDS ── -->
+    <div class="section-label">เปรียบเทียบเริ่มโครงการ (2014) vs. สั่งซื้อปกติ (2015+)</div>
+    <div class="mgrid2" id="compareGrid"></div>
+
+    <!-- ── SECTION 3: PROJECT vs NORMAL CHARTS ── -->
+    <div class="section-label">การสั่งซื้อ BW1800 & BW2200: เริ่มโครงการ vs. ปกติ</div>
     <div class="row2">
       <div class="panel">
         <div class="ph">
           <div class="ph-left">
             <div class="ptitle">BW1800 — เริ่มโครงการ vs. สั่งซื้อปกติ</div>
-            <div class="psub">ปี 2014 = เริ่มโครงการ · ปี 2015+ = สั่งซื้อปกติ</div>
+            <div class="psub">แดง = เริ่มโครงการ (2014) · น้ำเงิน = ปกติ (2015+)</div>
           </div>
-          <div class="pbadge">GROUPED BAR</div>
+          <div class="pbadge">BAR</div>
         </div>
-        <div style="position:relative;height:230px;"><canvas id="cBW1800" role="img" aria-label="BW1800 orders">BW1800</canvas></div>
+        <div style="position:relative;height:230px;"><canvas id="cBW1800" role="img" aria-label="BW1800">BW1800</canvas></div>
         <div class="legend" id="lBW1800"></div>
       </div>
       <div class="panel">
         <div class="ph">
           <div class="ph-left">
             <div class="ptitle">BW2200 — เริ่มโครงการ vs. สั่งซื้อปกติ</div>
-            <div class="psub">ปี 2014 = เริ่มโครงการ · ปี 2015+ = สั่งซื้อปกติ</div>
+            <div class="psub">แดง = เริ่มโครงการ (2014) · น้ำเงิน = ปกติ (2015+)</div>
           </div>
-          <div class="pbadge">GROUPED BAR</div>
+          <div class="pbadge">BAR</div>
         </div>
-        <div style="position:relative;height:230px;"><canvas id="cBW2200" role="img" aria-label="BW2200 orders">BW2200</canvas></div>
+        <div style="position:relative;height:230px;"><canvas id="cBW2200" role="img" aria-label="BW2200">BW2200</canvas></div>
         <div class="legend" id="lBW2200"></div>
       </div>
     </div>
 
+    <!-- ── SECTION 4: BELT TYPE SELECTOR ── -->
+    <div class="section-label">วิเคราะห์แยกตามชนิดสายพาน</div>
+    <div class="belt-selector" id="beltSelector">
+      <span class="belt-selector-label">เลือกสายพาน :</span>
+    </div>
+    <div class="row2">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle" id="beltChartTitle1">ความยาวที่สั่งซื้อ</div>
+            <div class="psub" id="beltChartSub1">แยกตามปี</div>
+          </div>
+          <div class="pbadge">BAR — เมตร</div>
+        </div>
+        <div style="position:relative;height:260px;"><canvas id="cBeltLen" role="img" aria-label="Belt length by year">Length</canvas></div>
+        <div class="legend" id="lBeltLen"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle" id="beltChartTitle2">มูลค่าที่สั่งซื้อ</div>
+            <div class="psub" id="beltChartSub2">แยกตามปี</div>
+          </div>
+          <div class="pbadge">BAR — ล้านบาท</div>
+        </div>
+        <div style="position:relative;height:260px;"><canvas id="cBeltVal" role="img" aria-label="Belt value by year">Value</canvas></div>
+        <div class="legend" id="lBeltVal"></div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 5: WIDTH STACKED ── -->
     <div class="section-label">จำนวนเมตรแยกตามขนาดสายพาน (Belt Width) แต่ละปี</div>
     <div class="panel">
       <div class="ph">
         <div class="ph-left">
           <div class="ptitle">Belt Width แต่ละปี</div>
-          <div class="psub">Stacked bar แสดงสัดส่วนแต่ละขนาด</div>
+          <div class="psub">Stacked bar — BW1600 / BW1800 / BW2200 / BW2400 / อื่นๆ</div>
         </div>
         <div class="pbadge">STACKED BAR</div>
       </div>
-      <div style="position:relative;height:270px;"><canvas id="cWidth" role="img" aria-label="Belt width stacked">Width by year</canvas></div>
+      <div style="position:relative;height:270px;"><canvas id="cWidth" role="img" aria-label="Width stacked">Width</canvas></div>
       <div class="legend" id="lWidth"></div>
     </div>
 
+    <!-- ── SECTION 6: VALUE STACKED ── -->
     <div class="section-label">มูลค่าการสั่งซื้อแต่ละปี แยก BW2200 · BW1800 · สายพานเครื่องจักรอื่น</div>
     <div class="panel">
       <div class="ph">
@@ -222,10 +306,11 @@ a.lpdf:hover{opacity:1;}
         </div>
         <div class="pbadge">STACKED BAR</div>
       </div>
-      <div style="position:relative;height:270px;"><canvas id="cValue" role="img" aria-label="Value by year">Value</canvas></div>
+      <div style="position:relative;height:270px;"><canvas id="cValue" role="img" aria-label="Value stacked">Value</canvas></div>
       <div class="legend" id="lValue"></div>
     </div>
 
+    <!-- ── SECTION 7: TABLE ── -->
     <div class="section-label">ข้อมูลทั้งหมด</div>
     <div class="fsect">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#545968" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -242,169 +327,161 @@ a.lpdf:hover{opacity:1;}
         <table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table>
       </div>
     </div>
-  </div>
 
+  </div><!-- /main -->
 </div>
 
 <script>
 const SHEET_ID = '14GmKP362tbU17eAAY-dYy37T_Iqtwga4HSULdPntyQ0';
 const GID = '0';
 
-// ── Google Visualization JSONP (ไม่มีปัญหา CORS) ──
-function loadViaGViz(callback) {
-  const callbackName = '_gvizCb_' + Date.now();
-  const script = document.createElement('script');
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}&tqx=out:json&callback=${callbackName}`;
-  let done = false;
-  window[callbackName] = function(data) {
-    done = true;
-    delete window[callbackName];
-    document.head.removeChild(script);
-    try { callback(null, parseGViz(data)); }
-    catch(e) { callback(e); }
+// Belt type definitions
+const BELT_TYPES = [
+  { key:'BW2200',        label:'BW2200',        color:'#2ecc71',
+    match: r => getBW(r)==='BW2200' },
+  { key:'BW1800',        label:'BW1800',        color:'#3b9ede',
+    match: r => getBW(r)==='BW1800' },
+  { key:'BW2400_SPD',    label:'BW2400 (SPD)',  color:'#9b59b6',
+    match: r => getBW(r)==='BW2400' && getMachine(r).toLowerCase().includes('spreader') },
+  { key:'BW2400_CRDCV',  label:'BW2400 (CR-DCV)',color:'#e74c3c',
+    match: r => getBW(r)==='BW2400' && getMachine(r).toLowerCase().includes('dcv') },
+  { key:'BW2400_CRSPL',  label:'BW2400 (CR-SPL)',color:'#f1c40f',
+    match: r => getBW(r)==='BW2400' && getMachine(r).toLowerCase().includes('spl') },
+  { key:'BW1600',        label:'BW1600',        color:'#f07c1f',
+    match: r => getBW(r)==='BW1600' },
+];
+
+let ALL = [], HDR = [], sCol = -1, sAsc = true, charts = {};
+let activeBelt = 'BW2200'; // default selected belt
+
+const FMT = n => { const v=parseFloat(String(n).replace(/,/g,'')); return isNaN(v)?(n||''):new Intl.NumberFormat('th-TH').format(Math.round(v)); };
+const num = v => parseFloat(String(v||'').replace(/,/g,''))||0;
+const TT  = { backgroundColor:'#1e2333',borderColor:'rgba(240,124,31,.35)',borderWidth:1,titleColor:'#eef0f5',bodyColor:'#8b90a0',padding:10,cornerRadius:8 };
+
+function ci(kw) {
+  const k=kw.toLowerCase();
+  let i=HDR.findIndex(h=>h.toLowerCase()===k);
+  return i>=0?i:HDR.findIndex(h=>h.toLowerCase().includes(k));
+}
+function uniq(arr,idx){
+  return[...new Set(arr.map(r=>r[idx]).filter(v=>v!==undefined&&v!==''))].sort((a,b)=>{
+    const na=parseFloat(a),nb=parseFloat(b);
+    return(!isNaN(na)&&!isNaN(nb))?na-nb:String(a).localeCompare(String(b),'th');
+  });
+}
+function killChart(key){if(charts[key]){try{charts[key].destroy();}catch(e){} delete charts[key];}}
+
+function getBW(row){
+  const iN=ci('รายการ'), iW=ci('belt w');
+  const name=String(row[iN]||'').toUpperCase();
+  for(const w of [1600,1800,2000,2200,2400,2600,2800]){if(name.includes('BW'+w))return'BW'+w;}
+  const wv=num(row[iW]); return wv?'BW'+wv:'อื่นๆ';
+}
+function getMachine(row){
+  const iM=ci('เครื่องจักร');
+  return String(row[iM]||'').toLowerCase();
+}
+
+// ── Google Visualization JSONP ──
+function loadViaGViz(cb){
+  const cbName='_gviz_'+Date.now();
+  const s=document.createElement('script');
+  s.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}&tqx=out:json&callback=${cbName}`;
+  let done=false;
+  window[cbName]=function(data){
+    done=true; delete window[cbName]; document.head.removeChild(s);
+    try{cb(null,parseGViz(data));}catch(e){cb(e);}
   };
-  script.onerror = () => { if(!done){ done=true; callback(new Error('Script load failed — ตรวจสอบว่า Sheet เป็น Public')); }};
-  setTimeout(() => { if(!done){ done=true; callback(new Error('Timeout — Sheet อาจไม่เป็น Public')); }}, 10000);
-  script.src = url;
-  document.head.appendChild(script);
+  s.onerror=()=>{if(!done){done=true;cb(new Error('Script load failed'));}};
+  setTimeout(()=>{if(!done){done=true;cb(new Error('Timeout'));}},12000);
+  document.head.appendChild(s);
 }
-
-function parseGViz(data) {
-  // data.table.cols = [{label, type}], data.table.rows = [{c:[{v}]}]
-  const cols = data.table.cols.map(c => c.label || '');
-  const rows = data.table.rows.map(r =>
-    r.c.map((cell, i) => {
-      if (!cell || cell.v === null || cell.v === undefined) return '';
-      // Date type → extract year
-      if (data.table.cols[i].type === 'date' && cell.v) {
-        const m = String(cell.v).match(/Date\((\d+),(\d+),(\d+)\)/);
-        return m ? String(parseInt(m[1])) : String(cell.v);
-      }
-      return String(cell.v);
-    })
-  );
-  return { cols, rows };
+function parseGViz(data){
+  const cols=data.table.cols.map(c=>c.label||'');
+  const rows=data.table.rows.map(r=>r.c.map((cell,i)=>{
+    if(!cell||cell.v===null||cell.v===undefined)return'';
+    if(data.table.cols[i].type==='date'&&cell.v){
+      const m=String(cell.v).match(/Date\((\d+),/); return m?String(parseInt(m[1])):'';
+    }
+    return String(cell.v);
+  }));
+  return{cols,rows};
 }
-
-// ── Also try CSV as fallback ──
-async function loadViaCSV() {
-  const urls = [
+async function loadViaCSV(){
+  for(const url of[
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`,
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`,
-  ];
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) continue;
-      const text = await res.text();
-      if (!text || text.trim().startsWith('<!')) continue;
+  ]){
+    try{
+      const res=await fetch(url,{mode:'cors'});
+      if(!res.ok)continue;
+      const text=await res.text();
+      if(!text||text.trim().startsWith('<!'))continue;
       return parseCSV(text);
-    } catch(e) { /* try next */ }
+    }catch(e){}
   }
   return null;
 }
-
-function parseCSV(text) {
-  const rows = []; let cur = '', inQ = false; const cells = [];
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c==='"'){inQ=!inQ;continue;}
-    if (c===','&&!inQ){cells.push(cur.trim());cur='';continue;}
-    if ((c==='\n'||c==='\r')&&!inQ){
+function parseCSV(text){
+  const rows=[];let cur='',inQ=false;const cells=[];
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){inQ=!inQ;continue;}
+    if(c===','&&!inQ){cells.push(cur.trim());cur='';continue;}
+    if((c==='\n'||c==='\r')&&!inQ){
       if(cur.trim()||cells.length){cells.push(cur.trim());rows.push([...cells]);cells.length=0;cur='';}
-      if(c==='\r'&&text[i+1]==='\n')i++; continue;
+      if(c==='\r'&&text[i+1]==='\n')i++;continue;
     }
     cur+=c;
   }
   if(cur.trim()||cells.length){cells.push(cur.trim());rows.push([...cells]);}
-  if (!rows.length) return null;
-  // find header row
-  let start = 0;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    if (rows[i].filter(c=>c!=='').length > 3) { start = i; break; }
-  }
-  return { cols: rows[start], rows: rows.slice(start+1).filter(r=>r.some(c=>c!=='')) };
+  if(!rows.length)return null;
+  let start=0;
+  for(let i=0;i<Math.min(5,rows.length);i++){if(rows[i].filter(c=>c!=='').length>3){start=i;break;}}
+  return{cols:rows[start],rows:rows.slice(start+1).filter(r=>r.some(c=>c!==''))};
 }
 
-// ── State ──
-let ALL = [], HDR = [], sCol = -1, sAsc = true, charts = {};
-
-const FMT = n => { const v=parseFloat(String(n).replace(/,/g,'')); return isNaN(v)?(n||''):new Intl.NumberFormat('th-TH').format(Math.round(v)); };
-const num = v => parseFloat(String(v||'').replace(/,/g,''))||0;
-
-function ci(kw) {
-  const k = kw.toLowerCase();
-  let i = HDR.findIndex(h=>h.toLowerCase()===k);
-  return i>=0 ? i : HDR.findIndex(h=>h.toLowerCase().includes(k));
-}
-function uniq(arr, idx) {
-  return [...new Set(arr.map(r=>r[idx]).filter(v=>v!==undefined&&v!==''))].sort((a,b)=>{
-    const na=parseFloat(a),nb=parseFloat(b);
-    return (!isNaN(na)&&!isNaN(nb))?na-nb:String(a).localeCompare(String(b),'th');
-  });
-}
-function killChart(key) { if(charts[key]){try{charts[key].destroy();}catch(e){} delete charts[key];} }
-
-const TT = { backgroundColor:'#1e2333', borderColor:'rgba(240,124,31,.35)', borderWidth:1, titleColor:'#eef0f5', bodyColor:'#8b90a0', padding:10, cornerRadius:8 };
-
-function getBW(row) {
-  const iN = ci('รายการ'); const iW = ci('belt w');
-  const name = String(row[iN]||'').toUpperCase();
-  for (const w of [1600,1800,2000,2200,2400,2600,2800]) {
-    if (name.includes('BW'+w)) return 'BW'+w;
-  }
-  const wv = num(row[iW]);
-  return wv ? 'BW'+wv : 'อื่นๆ';
-}
-
-async function loadData() {
-  const btn = document.getElementById('btnRefresh');
+async function loadData(){
+  const btn=document.getElementById('btnRefresh');
   btn.classList.add('spinning');
   setStatus('load');
-  document.getElementById('lscreen').style.display = 'flex';
-  document.getElementById('escreen').style.display = 'none';
-  document.getElementById('main').style.display = 'none';
+  document.getElementById('lscreen').style.display='flex';
+  document.getElementById('escreen').style.display='none';
+  document.getElementById('main').style.display='none';
 
-  // Try GViz JSONP first, then CSV fallback
-  loadViaGViz(async (err, result) => {
-    if (err || !result) {
-      // Fallback to CSV
-      result = await loadViaCSV();
+  loadViaGViz(async(err,result)=>{
+    if(err||!result) result=await loadViaCSV();
+    if(!result||!result.rows||result.rows.length===0){
+      showError(err?err.message:'ไม่พบข้อมูล'); btn.classList.remove('spinning'); return;
     }
-    if (!result || !result.rows || result.rows.length === 0) {
-      showError(err ? err.message : 'ไม่พบข้อมูล');
-      btn.classList.remove('spinning');
-      return;
-    }
-    HDR = result.cols;
-    ALL = result.rows;
+    HDR=result.cols; ALL=result.rows;
     buildFilters();
-    document.getElementById('lscreen').style.display = 'none';
-    document.getElementById('main').style.display = 'block';
-    document.getElementById('lastSync').textContent = new Date().toLocaleString('th-TH',{hour12:false});
+    buildBeltSelector();
+    document.getElementById('lscreen').style.display='none';
+    document.getElementById('main').style.display='block';
+    document.getElementById('lastSync').textContent=new Date().toLocaleString('th-TH',{hour12:false});
     setStatus('live');
     renderAll();
     btn.classList.remove('spinning');
   });
 }
 
-function showError(msg) {
-  document.getElementById('lscreen').style.display = 'none';
-  document.getElementById('escreen').style.display = 'block';
-  document.getElementById('emsg').textContent = 'Error: ' + msg +
-    '\n\n1. เปิด Google Sheet\n2. Share → General access → "Anyone with the link" → Viewer\n3. กด Done แล้วกด Refresh';
+function showError(msg){
+  document.getElementById('lscreen').style.display='none';
+  document.getElementById('escreen').style.display='block';
+  document.getElementById('emsg').textContent='Error: '+msg+
+    '\n\n1. เปิด Google Sheet\n2. Share → "Anyone with the link" → Viewer\n3. กด Done แล้วกด Refresh';
   setStatus('err');
 }
-
-function setStatus(s) {
-  const d=document.getElementById('sdot'), t=document.getElementById('stxt');
-  d.className = 'sdot';
+function setStatus(s){
+  const d=document.getElementById('sdot'),t=document.getElementById('stxt');
+  d.className='sdot';
   if(s==='live'){d.classList.add('live');t.textContent='Connected · Live data from Google Sheets';}
   else if(s==='err'){d.classList.add('err');t.textContent='Connection error';}
   else{t.textContent='กำลังเชื่อมต่อ...';}
 }
 
-function buildFilters() {
+function buildFilters(){
   const iY=ci('year'),iB=ci('ยี่ห้อ'),iT=ci('type'),iM=ci('เครื่องจักร');
   [['fY',iY],['fB',iB],['fT',iT],['fM',iM]].forEach(([id,idx])=>{
     const sel=document.getElementById(id);
@@ -417,20 +494,34 @@ function buildFilters() {
   ).join('');
 }
 
-function getFilt() {
+function buildBeltSelector(){
+  const wrap=document.getElementById('beltSelector');
+  // clear existing buttons (keep label)
+  [...wrap.querySelectorAll('.belt-btn')].forEach(b=>b.remove());
+  BELT_TYPES.forEach(bt=>{
+    const btn=document.createElement('button');
+    btn.className='belt-btn'+(bt.key===activeBelt?' active':'');
+    btn.textContent=bt.label;
+    btn.style.setProperty('--bc',bt.color);
+    btn.onclick=()=>{ activeBelt=bt.key; [...wrap.querySelectorAll('.belt-btn')].forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderBeltCharts(getFilt()); };
+    wrap.appendChild(btn);
+  });
+}
+
+function getFilt(){
   const fy=document.getElementById('fY').value,fb=document.getElementById('fB').value;
   const ft=document.getElementById('fT').value,fm=document.getElementById('fM').value;
   const iY=ci('year'),iB=ci('ยี่ห้อ'),iT=ci('type'),iM=ci('เครื่องจักร');
   return ALL.filter(r=>(!fy||r[iY]==fy)&&(!fb||r[iB]==fb)&&(!ft||r[iT]==ft)&&(!fm||r[iM]==fm));
 }
-
 function sb(col){if(sCol===col)sAsc=!sAsc;else{sCol=col;sAsc=true;}renderAll();}
 
-function renderAll() {
-  const data = getFilt();
-  const iQ=ci('จำนวน'), iV=ci('ราคารวม'), iB=ci('ยี่ห้อ'), iT=ci('type'), iY=ci('year'), iL=ci('link');
+function renderAll(){
+  const data=getFilt();
+  const iQ=ci('จำนวน'),iV=ci('ราคารวม'),iB=ci('ยี่ห้อ'),iT=ci('type'),iY=ci('year'),iL=ci('link');
+  const years=uniq(data,iY).sort();
 
-  // Metrics
+  // ── Metrics ──
   const tM=data.reduce((s,r)=>s+num(r[iQ]),0);
   const tV=data.reduce((s,r)=>s+num(r[iV]),0);
   document.getElementById('mgrid').innerHTML=`
@@ -439,7 +530,134 @@ function renderAll() {
     <div class="mc a3 fi"><div class="mico">💰</div><div class="mlbl">มูลค่ารวม</div><div class="mval">${(tV/1e6).toFixed(1)}<span style="font-size:15px;opacity:.6"> M</span></div><div class="munit">ล้านบาท</div></div>`;
   document.getElementById('rc').innerHTML=`แสดง <strong>${data.length}</strong> จาก ${ALL.length} รายการ`;
 
-  // Table
+  // ── Compare Cards: ความยาว & มูลค่า เริ่มโครงการ vs ปกติ ──
+  const projRows=data.filter(r=>r[iY]==='2014');
+  const normRows=data.filter(r=>r[iY]!=='2014'&&r[iY]!=='');
+  const projM=projRows.reduce((s,r)=>s+num(r[iQ]),0);
+  const normM=normRows.reduce((s,r)=>s+num(r[iQ]),0);
+  const projV=projRows.reduce((s,r)=>s+num(r[iV]),0);
+  const normV=normRows.reduce((s,r)=>s+num(r[iV]),0);
+  const ratioM=projM>0?(normM/projM).toFixed(1)+'x':'—';
+  const ratioV=projV>0?(normV/projV).toFixed(1)+'x':'—';
+  document.getElementById('compareGrid').innerHTML=`
+    <div class="mc a4 fi">
+      <div class="mlbl">เปรียบเทียบความยาว (เมตร)</div>
+      <div class="mc-compare">
+        <div class="side">
+          <div class="side-lbl">เริ่มโครงการ (2014)</div>
+          <div class="side-val proj-val">${FMT(projM)}</div>
+          <div class="side-unit">เมตร</div>
+        </div>
+        <div class="vs-divider">
+          <div class="vs-badge">VS</div>
+          <div class="vs-ratio" style="color:#8b90a0;font-size:11px;margin-top:4px;">ปกติ ${ratioM}</div>
+        </div>
+        <div class="side right">
+          <div class="side-lbl">สั่งซื้อปกติ (2015+)</div>
+          <div class="side-val norm-val">${FMT(normM)}</div>
+          <div class="side-unit">เมตร</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;height:6px;border-radius:3px;background:var(--bg-panel);overflow:hidden;">
+        <div style="height:100%;width:${projM+normM>0?Math.round(projM/(projM+normM)*100):0}%;background:var(--danger);border-radius:3px;transition:width .6s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-3);">
+        <span>เริ่มโครงการ ${projM+normM>0?Math.round(projM/(projM+normM)*100):0}%</span>
+        <span>ปกติ ${projM+normM>0?Math.round(normM/(projM+normM)*100):0}%</span>
+      </div>
+    </div>
+    <div class="mc a5 fi">
+      <div class="mlbl">เปรียบเทียบมูลค่า (บาท)</div>
+      <div class="mc-compare">
+        <div class="side">
+          <div class="side-lbl">เริ่มโครงการ (2014)</div>
+          <div class="side-val proj-val">${(projV/1e6).toFixed(1)}</div>
+          <div class="side-unit">ล้านบาท</div>
+        </div>
+        <div class="vs-divider">
+          <div class="vs-badge">VS</div>
+          <div class="vs-ratio" style="color:#8b90a0;font-size:11px;margin-top:4px;">ปกติ ${ratioV}</div>
+        </div>
+        <div class="side right">
+          <div class="side-lbl">สั่งซื้อปกติ (2015+)</div>
+          <div class="side-val norm-val">${(normV/1e6).toFixed(1)}</div>
+          <div class="side-unit">ล้านบาท</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;height:6px;border-radius:3px;background:var(--bg-panel);overflow:hidden;">
+        <div style="height:100%;width:${projV+normV>0?Math.round(projV/(projV+normV)*100):0}%;background:#9b59b6;border-radius:3px;transition:width .6s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-3);">
+        <span>เริ่มโครงการ ${projV+normV>0?Math.round(projV/(projV+normV)*100):0}%</span>
+        <span>ปกติ ${projV+normV>0?Math.round(normV/(projV+normV)*100):0}%</span>
+      </div>
+    </div>`;
+
+  // ── Charts BW1800 & BW2200 ──
+  ['BW1800','BW2200'].forEach(bw=>{
+    const cid='c'+bw, lid='l'+bw;
+    const bwRows=data.filter(r=>getBW(r)===bw);
+    const bwYears=uniq(bwRows,iY).sort();
+    const barColors=bwYears.map(y=>y==='2014'?'#e74c3c':'#3b9ede');
+    const barData=bwYears.map(y=>bwRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
+    document.getElementById(lid).innerHTML=`
+      <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+      <span><span class="lsq" style="background:#3b9ede"></span>สั่งซื้อปกติ (2015+)</span>`;
+    killChart(cid);
+    if(!bwRows.length)return;
+    charts[cid]=new Chart(document.getElementById(cid),{type:'bar',
+      data:{labels:bwYears,datasets:[{data:barData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${FMT(c.raw)} ม.`,title:i=>`ปี ${i[0].label} · ${bw}`}}},
+        scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+                y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.04)'}}}}
+    });
+  });
+
+  // ── Belt type charts ──
+  renderBeltCharts(data);
+
+  // ── Stacked Width ──
+  const widthOrder=['BW1600','BW1800','BW2000','BW2200','BW2400','BW2600','BW2800'];
+  const wColors={'BW1600':'#f07c1f','BW1800':'#3b9ede','BW2000':'#f1c40f','BW2200':'#2ecc71','BW2400':'#9b59b6','BW2600':'#1abc9c','BW2800':'#e74c3c'};
+  const wMap={};
+  data.forEach(r=>{const y=r[iY];if(!y)return;const w=getBW(r);if(!wMap[w])wMap[w]={};wMap[w][y]=(wMap[w][y]||0)+num(r[iQ]);});
+  const wPresent=widthOrder.filter(w=>wMap[w]);
+  document.getElementById('lWidth').innerHTML=wPresent.map(w=>`<span><span class="lsq" style="background:${wColors[w]||'#545968'}"></span>${w}</span>`).join('');
+  killChart('cWidth');
+  charts['cWidth']=new Chart(document.getElementById('cWidth'),{type:'bar',
+    data:{labels:years,datasets:wPresent.map(w=>({label:w,data:years.map(y=>wMap[w]?.[y]||0),backgroundColor:wColors[w]||'#545968',borderRadius:0,borderSkipped:false}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.dataset.label}: ${FMT(c.raw)} ม.`,footer:items=>`รวม: ${FMT(items.reduce((s,i)=>s+i.raw,0))} ม.`}}},
+      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
+              y:{ticks:{color:'#545968',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}}}
+  });
+
+  // ── Stacked Value ──
+  const v2200={},v1800={},vOther={};
+  data.forEach(r=>{const y=r[iY];if(!y)return;const v=num(r[iV]);const w=getBW(r);
+    if(w==='BW2200')v2200[y]=(v2200[y]||0)+v;
+    else if(w==='BW1800')v1800[y]=(v1800[y]||0)+v;
+    else vOther[y]=(vOther[y]||0)+v;
+  });
+  document.getElementById('lValue').innerHTML=`
+    <span><span class="lsq" style="background:#2ecc71"></span>BW2200</span>
+    <span><span class="lsq" style="background:#3b9ede"></span>BW1800</span>
+    <span><span class="lsq" style="background:#f07c1f"></span>สายพานเครื่องจักรอื่น</span>`;
+  killChart('cValue');
+  charts['cValue']=new Chart(document.getElementById('cValue'),{type:'bar',
+    data:{labels:years,datasets:[
+      {label:'BW2200',data:years.map(y=>(v2200[y]||0)/1e6),backgroundColor:'#2ecc71',borderRadius:0,borderSkipped:false},
+      {label:'BW1800',data:years.map(y=>(v1800[y]||0)/1e6),backgroundColor:'#3b9ede',borderRadius:0,borderSkipped:false},
+      {label:'เครื่องจักรอื่น',data:years.map(y=>(vOther[y]||0)/1e6),backgroundColor:'#f07c1f',borderRadius:0,borderSkipped:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.dataset.label}: ${c.raw.toFixed(2)} M฿`,footer:items=>`รวม: ${items.reduce((s,i)=>s+i.raw,0).toFixed(2)} ล้านบาท`}}},
+      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
+              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(0)+' M'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}}}
+  });
+
+  // ── Table ──
   let sorted=[...data];
   if(sCol>=0){sorted.sort((a,b)=>{
     const av=a[sCol],bv=b[sCol],na=parseFloat(String(av).replace(/,/g,'')),nb=parseFloat(String(bv).replace(/,/g,''));
@@ -456,117 +674,62 @@ function renderAll() {
   document.getElementById('tbody').innerHTML=sorted.map(r=>
     '<tr>'+HDR.map((_,ci2)=>{
       const cell=r[ci2]||'';
-      if(ci2===iT){const s=cell.toLowerCase().includes('steel');return`<td><span class="badge ${s?'bst':'bfa'}">${s?'Steel Cord':'Fabric'}</span></td>`;}
-      if(ci2===iY&&cell)return`<td><span class="badge byr">${cell}</span></td>`;
-      if(ci2===iL)return`<td>${cell&&cell.startsWith('http')?`<a class="lpdf" href="${cell}" target="_blank">PDF</a>`:''}</td>`;
+      const iT2=ci('type'),iY2=ci('year'),iL2=ci('link');
+      if(ci2===iT2){const s=cell.toLowerCase().includes('steel');return`<td><span class="badge ${s?'bst':'bfa'}">${s?'Steel Cord':'Fabric'}</span></td>`;}
+      if(ci2===iY2&&cell)return`<td><span class="badge byr">${cell}</span></td>`;
+      if(ci2===iL2)return`<td>${cell&&cell.startsWith('http')?`<a class="lpdf" href="${cell}" target="_blank">PDF</a>`:''}</td>`;
       const isN=!isNaN(parseFloat(String(cell).replace(/,/g,'')))&&cell!=='';
       const isP=HDR[ci2]&&(HDR[ci2].includes('ราคา')||HDR[ci2].includes('จำนวน'));
       if(isP&&isN)return`<td class="num">${FMT(cell)}</td>`;
       return`<td class="${ci2===0?'tdim':''}">${cell}</td>`;
     }).join('')+'</tr>'
   ).join('');
+}
 
-  const years = uniq(data, iY).sort();
+function renderBeltCharts(data){
+  const iQ=ci('จำนวน'),iV=ci('ราคารวม'),iY=ci('year');
+  const bt=BELT_TYPES.find(b=>b.key===activeBelt)||BELT_TYPES[0];
+  const bRows=data.filter(bt.match);
+  const years=uniq(data,iY).sort();
 
-  // ── Chart 1&2: BW1800 & BW2200 project vs normal ──
-  ['BW1800','BW2200'].forEach(bw => {
-    const cid = 'c'+bw.replace('BW','BW'), lid = 'l'+bw.replace('BW','BW');
-    const bwRows = data.filter(r=>getBW(r)===bw);
-    const bwYears = uniq(bwRows, iY).sort();
-    const projData = bwYears.map(y => bwRows.filter(r=>r[iY]==y&&r[iY]==='2014').reduce((s,r)=>s+num(r[iQ]),0));
-    const normData = bwYears.map(y => bwRows.filter(r=>r[iY]==y&&r[iY]!=='2014').reduce((s,r)=>s+num(r[iQ]),0));
+  // update subtitles
+  document.getElementById('beltChartSub1').textContent=`${bt.label} — แยกตามปี`;
+  document.getElementById('beltChartSub2').textContent=`${bt.label} — แยกตามปี`;
 
-    // simpler: one bar per year, colored by project/normal
-    const barColors = bwYears.map(y => y==='2014'?'#e74c3c':'#3b9ede');
-    const barData   = bwYears.map(y => bwRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
+  // length chart
+  const lenData=years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
+  const valData=years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iV]),0)/1e6);
+  const barColors=years.map(y=>y==='2014'?'#e74c3c':bt.color);
 
-    document.getElementById(lid).innerHTML=`
-      <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
-      <span><span class="lsq" style="background:#3b9ede"></span>สั่งซื้อปกติ (2015+)</span>`;
+  document.getElementById('lBeltLen').innerHTML=`
+    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>`;
+  document.getElementById('lBeltVal').innerHTML=`
+    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>`;
 
-    killChart(cid);
-    if(bwRows.length===0) return;
-    charts[cid]=new Chart(document.getElementById(cid),{
-      type:'bar',
-      data:{labels:bwYears, datasets:[{
-        data:barData,
-        backgroundColor:barColors,
-        borderRadius:5, borderSkipped:false
-      }]},
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
-          title: items => `ปี ${items[0].label} · ${bw}`,
-          label: c => ` ${FMT(c.raw)} ม. (${c.raw>0&&c.label==='2014'?'เริ่มโครงการ':'ปกติ'})`,
-        }}},
-        scales:{
-          x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-          y:{ticks:{color:'#545968',font:{size:10},callback:v=>(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'rgba(255,255,255,.04)'}}
-        }
-      }
-    });
-  });
-
-  // ── Chart 3: Stacked Width ──
-  const widthOrder=['BW1600','BW1800','BW2000','BW2200','BW2400','BW2600','BW2800'];
-  const widthColors={'BW1600':'#f07c1f','BW1800':'#3b9ede','BW2000':'#f1c40f','BW2200':'#2ecc71','BW2400':'#9b59b6','BW2600':'#1abc9c','BW2800':'#e74c3c'};
-  const wMap={};
-  data.forEach(r=>{ const y=r[iY]; if(!y)return; const w=getBW(r); if(!wMap[w])wMap[w]={}; wMap[w][y]=(wMap[w][y]||0)+num(r[iQ]); });
-  const widthsPresent=widthOrder.filter(w=>wMap[w]);
-  const wDatasets=widthsPresent.map(w=>({
-    label:w, data:years.map(y=>wMap[w]?.[y]||0),
-    backgroundColor:widthColors[w]||'#545968', borderRadius:0, borderSkipped:false,
-  }));
-  document.getElementById('lWidth').innerHTML=widthsPresent.map(w=>
-    `<span><span class="lsq" style="background:${widthColors[w]||'#545968'}"></span>${w}</span>`
-  ).join('');
-  killChart('cWidth');
-  charts['cWidth']=new Chart(document.getElementById('cWidth'),{
-    type:'bar',
-    data:{labels:years, datasets:wDatasets},
-    options:{
-      responsive:true, maintainAspectRatio:false,
+  killChart('cBeltLen');
+  charts['cBeltLen']=new Chart(document.getElementById('cBeltLen'),{type:'bar',
+    data:{labels:years,datasets:[{label:'ความยาว',data:lenData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
-        label:c=>` ${c.dataset.label}: ${FMT(c.raw)} ม.`,
-        footer:items=>`รวม: ${FMT(items.reduce((s,i)=>s+i.raw,0))} ม.`
+        title:i=>`ปี ${i[0].label} · ${bt.label}`,
+        label:c=>` ${FMT(c.raw)} ม.${c.label==='2014'?' (เริ่มโครงการ)':''}`
       }}},
-      scales:{
-        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
-        y:{ticks:{color:'#545968',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}
-      }
-    }
+      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.04)'}}}}
   });
 
-  // ── Chart 4: Value stacked BW2200 / BW1800 / other ──
-  const v2200={},v1800={},vOther={};
-  data.forEach(r=>{ const y=r[iY]; if(!y)return; const v=num(r[iV]); const w=getBW(r);
-    if(w==='BW2200') v2200[y]=(v2200[y]||0)+v;
-    else if(w==='BW1800') v1800[y]=(v1800[y]||0)+v;
-    else vOther[y]=(vOther[y]||0)+v;
-  });
-  document.getElementById('lValue').innerHTML=`
-    <span><span class="lsq" style="background:#2ecc71"></span>BW2200</span>
-    <span><span class="lsq" style="background:#3b9ede"></span>BW1800</span>
-    <span><span class="lsq" style="background:#f07c1f"></span>สายพานเครื่องจักรอื่น</span>`;
-  killChart('cValue');
-  charts['cValue']=new Chart(document.getElementById('cValue'),{
-    type:'bar',
-    data:{labels:years, datasets:[
-      {label:'BW2200',   data:years.map(y=>(v2200[y]||0)/1e6), backgroundColor:'#2ecc71', borderRadius:0, borderSkipped:false},
-      {label:'BW1800',   data:years.map(y=>(v1800[y]||0)/1e6), backgroundColor:'#3b9ede', borderRadius:0, borderSkipped:false},
-      {label:'เครื่องจักรอื่น', data:years.map(y=>(vOther[y]||0)/1e6), backgroundColor:'#f07c1f', borderRadius:0, borderSkipped:false},
-    ]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
+  killChart('cBeltVal');
+  charts['cBeltVal']=new Chart(document.getElementById('cBeltVal'),{type:'bar',
+    data:{labels:years,datasets:[{label:'มูลค่า',data:valData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
-        label:c=>` ${c.dataset.label}: ${c.raw.toFixed(2)} M฿`,
-        footer:items=>`รวม: ${items.reduce((s,i)=>s+i.raw,0).toFixed(2)} ล้านบาท`
+        title:i=>`ปี ${i[0].label} · ${bt.label}`,
+        label:c=>` ${c.raw.toFixed(2)} ล้านบาท${c.label==='2014'?' (เริ่มโครงการ)':''}`
       }}},
-      scales:{
-        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
-        y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(0)+' M'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}
-      }
-    }
+      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(1)+' M'},grid:{color:'rgba(255,255,255,.04)'}}}}
   });
 }
 

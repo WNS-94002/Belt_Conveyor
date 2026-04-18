@@ -248,26 +248,8 @@ a.lpdf:hover{opacity:1;}
     <!-- ── SECTION 2: COMPARISON CHARTS ── -->
     <div class="section-label">เปรียบเทียบเริ่มโครงการ (2014) vs. สั่งซื้อปกติ (2015+)</div>
     <div class="row2" style="margin-bottom:16px;">
-      <div class="panel">
-        <div class="ph">
-          <div class="ph-left">
-            <div class="ptitle">BW2200</div>
-            <div class="psub">ความยาว & มูลค่า · เริ่มโครงการ vs. ปกติ</div>
-          </div>
-          <div class="pbadge">HORIZONTAL BAR</div>
-        </div>
-        <div style="position:relative;height:200px;"><canvas id="cComp2200" role="img" aria-label="BW2200 comparison">BW2200 compare</canvas></div>
-      </div>
-      <div class="panel">
-        <div class="ph">
-          <div class="ph-left">
-            <div class="ptitle">BW1800</div>
-            <div class="psub">ความยาว & มูลค่า · เริ่มโครงการ vs. ปกติ</div>
-          </div>
-          <div class="pbadge">HORIZONTAL BAR</div>
-        </div>
-        <div style="position:relative;height:200px;"><canvas id="cComp1800" role="img" aria-label="BW1800 comparison">BW1800 compare</canvas></div>
-      </div>
+      <div class="panel" id="compPanel2200"></div>
+      <div class="panel" id="compPanel1800"></div>
     </div>
 
     <!-- ── SECTION 3: BELT TYPE SELECTOR ── -->
@@ -690,13 +672,13 @@ function renderBeltCharts(data){
           type:'linear', position:'left',
           ticks:{ color:'#545968', font:{size:10}, callback:cbLeft },
           grid:{ color:'rgba(255,255,255,.06)' },
-          title:{ display:true, text:yLabel, color:'#545968', font:{size:9} }
+          title:{ display:false }
         },
         yCum:{
           type:'linear', position:'right',
           ticks:{ color:'rgba(255,255,255,0.35)', font:{size:10}, callback:cbRight },
           grid:{ drawOnChartArea:false },
-          title:{ display:true, text:yLabelRight, color:'rgba(255,255,255,0.35)', font:{size:9} }
+          title:{ display:false }
         }
       }
     };

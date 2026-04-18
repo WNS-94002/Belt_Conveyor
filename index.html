@@ -113,7 +113,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .belt-btn:hover{border-color:rgba(240,124,31,.4);color:var(--accent);}
 .belt-btn.active{background:var(--accent-dim);border-color:var(--border-acc);color:var(--accent);}
 
-/* PROJ TOGGLE BUTTON */
+/* CUSTOM COMPARISON BARS */
+.comp-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text-1);letter-spacing:1.5px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.comp-title .cbadge{font-size:9px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--border-acc);border-radius:4px;padding:2px 8px;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;}
+.comp-group{margin-bottom:16px;}
+.comp-group:last-child{margin-bottom:0;}
+.comp-group-label{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.comp-group-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.comp-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.comp-row-label{font-size:11px;color:var(--text-2);white-space:nowrap;min-width:110px;font-family:'Sarabun',sans-serif;}
+.comp-bar-wrap{flex:1;height:22px;background:var(--bg-panel);border-radius:3px;overflow:hidden;position:relative;}
+.comp-bar{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;min-width:4px;}
+.comp-bar.proj{background:linear-gradient(90deg,rgba(231,76,60,.7),rgba(231,76,60,.9));}
+.comp-bar.norm{background:linear-gradient(90deg,rgba(59,158,222,.55),rgba(59,158,222,.85));}
+.comp-val{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;white-space:nowrap;margin-left:8px;min-width:80px;}
+.comp-val.proj{color:#e74c3c;}
+.comp-val.norm{color:#3b9ede;}
+.comp-legend{display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.comp-legend span{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-2);}
+.comp-leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.comp-ratio{font-family:'Rajdhani',sans-serif;font-size:10px;color:var(--text-3);margin-left:auto;align-self:center;}
 .proj-toggle{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-2);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:.5px;cursor:pointer;transition:all .2s;white-space:nowrap;text-transform:uppercase;}
 .proj-toggle.active{background:rgba(231,76,60,.12);border-color:rgba(231,76,60,.4);color:#e74c3c;}
 .proj-toggle:hover{border-color:rgba(231,76,60,.4);}
@@ -226,9 +245,30 @@ a.lpdf:hover{opacity:1;}
     <div class="section-label">ภาพรวมการจัดซื้อ</div>
     <div class="mgrid3" id="mgrid"></div>
 
-    <!-- ── SECTION 2: COMPARISON CARDS ── -->
+    <!-- ── SECTION 2: COMPARISON CHARTS ── -->
     <div class="section-label">เปรียบเทียบเริ่มโครงการ (2014) vs. สั่งซื้อปกติ (2015+)</div>
-    <div class="mgrid2" id="compareGrid"></div>
+    <div class="row2" style="margin-bottom:16px;">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle">BW2200</div>
+            <div class="psub">ความยาว & มูลค่า · เริ่มโครงการ vs. ปกติ</div>
+          </div>
+          <div class="pbadge">HORIZONTAL BAR</div>
+        </div>
+        <div style="position:relative;height:200px;"><canvas id="cComp2200" role="img" aria-label="BW2200 comparison">BW2200 compare</canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle">BW1800</div>
+            <div class="psub">ความยาว & มูลค่า · เริ่มโครงการ vs. ปกติ</div>
+          </div>
+          <div class="pbadge">HORIZONTAL BAR</div>
+        </div>
+        <div style="position:relative;height:200px;"><canvas id="cComp1800" role="img" aria-label="BW1800 comparison">BW1800 compare</canvas></div>
+      </div>
+    </div>
 
     <!-- ── SECTION 3: BELT TYPE SELECTOR ── -->
     <div class="section-label">วิเคราะห์แยกตามชนิดสายพาน</div>
@@ -502,68 +542,63 @@ function renderAll(){
     <div class="mc a3 fi"><div class="mico">💰</div><div class="mlbl">มูลค่ารวม</div><div class="mval">${(tV/1e6).toFixed(1)}<span style="font-size:15px;opacity:.6"> M</span></div><div class="munit">ล้านบาท</div></div>`;
   document.getElementById('rc').innerHTML=`แสดง <strong>${data.length}</strong> จาก ${ALL.length} รายการ`;
 
-  // ── Compare Cards: ความยาว & มูลค่า เริ่มโครงการ vs ปกติ ──
-  const projRows=data.filter(r=>r[iY]==='2014');
-  const normRows=data.filter(r=>r[iY]!=='2014'&&r[iY]!=='');
-  const projM=projRows.reduce((s,r)=>s+num(r[iQ]),0);
-  const normM=normRows.reduce((s,r)=>s+num(r[iQ]),0);
-  const projV=projRows.reduce((s,r)=>s+num(r[iV]),0);
-  const normV=normRows.reduce((s,r)=>s+num(r[iV]),0);
-  const ratioM=projM>0?(normM/projM).toFixed(1)+'x':'—';
-  const ratioV=projV>0?(normV/projV).toFixed(1)+'x':'—';
-  document.getElementById('compareGrid').innerHTML=`
-    <div class="mc a4 fi">
-      <div class="mlbl">เปรียบเทียบความยาว (เมตร)</div>
-      <div class="mc-compare">
-        <div class="side">
-          <div class="side-lbl">เริ่มโครงการ (2014)</div>
-          <div class="side-val proj-val">${FMT(projM)}</div>
-          <div class="side-unit">เมตร</div>
+  // ── Compare Custom HTML Bars: BW2200 & BW1800 ──
+  ['BW2200','BW1800'].forEach(bw => {
+    const panel = document.getElementById('compPanel' + bw.replace('BW',''));
+    if (!panel) return;
+    killChart('cComp' + bw.replace('BW',''));
+
+    const bwRows = data.filter(r => getBW(r) === bw);
+    const proj   = bwRows.filter(r => r[iY] === '2014');
+    const norm   = bwRows.filter(r => r[iY] !== '2014' && r[iY] !== '');
+    const projM  = proj.reduce((s,r)=>s+num(r[iQ]),0);
+    const normM  = norm.reduce((s,r)=>s+num(r[iQ]),0);
+    const projV  = proj.reduce((s,r)=>s+num(r[iV]),0)/1e6;
+    const normV  = norm.reduce((s,r)=>s+num(r[iV]),0)/1e6;
+
+    const maxM = Math.max(projM, normM, 1);
+    const maxV = Math.max(projV, normV, 0.01);
+    const pMp = (projM/maxM*100).toFixed(1);
+    const pMn = (normM/maxM*100).toFixed(1);
+    const pVp = (projV/maxV*100).toFixed(1);
+    const pVn = (normV/maxV*100).toFixed(1);
+    const ratioM = projM>0?(normM/projM).toFixed(1)+'x':'—';
+    const ratioV = projV>0?(normV/projV).toFixed(1)+'x':'—';
+
+    panel.innerHTML = `
+      <div class="comp-title">${bw} <span class="cbadge">HORIZONTAL BAR</span></div>
+      <div class="comp-group">
+        <div class="comp-group-label">ความยาวสายพาน</div>
+        <div class="comp-row">
+          <div class="comp-row-label">เริ่มโครงการ</div>
+          <div class="comp-bar-wrap"><div class="comp-bar proj" style="width:${pMp}%"></div></div>
+          <div class="comp-val proj">${FMT(projM)} ม.</div>
         </div>
-        <div class="vs-divider">
-          <div class="vs-badge">VS</div>
-          <div class="vs-ratio" style="color:#8b90a0;font-size:11px;margin-top:4px;">ปกติ ${ratioM}</div>
-        </div>
-        <div class="side right">
-          <div class="side-lbl">สั่งซื้อปกติ (2015+)</div>
-          <div class="side-val norm-val">${FMT(normM)}</div>
-          <div class="side-unit">เมตร</div>
-        </div>
-      </div>
-      <div style="margin-top:12px;height:6px;border-radius:3px;background:var(--bg-panel);overflow:hidden;">
-        <div style="height:100%;width:${projM+normM>0?Math.round(projM/(projM+normM)*100):0}%;background:var(--danger);border-radius:3px;transition:width .6s;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-3);">
-        <span>เริ่มโครงการ ${projM+normM>0?Math.round(projM/(projM+normM)*100):0}%</span>
-        <span>ปกติ ${projM+normM>0?Math.round(normM/(projM+normM)*100):0}%</span>
-      </div>
-    </div>
-    <div class="mc a5 fi">
-      <div class="mlbl">เปรียบเทียบมูลค่า (บาท)</div>
-      <div class="mc-compare">
-        <div class="side">
-          <div class="side-lbl">เริ่มโครงการ (2014)</div>
-          <div class="side-val proj-val">${(projV/1e6).toFixed(1)}</div>
-          <div class="side-unit">ล้านบาท</div>
-        </div>
-        <div class="vs-divider">
-          <div class="vs-badge">VS</div>
-          <div class="vs-ratio" style="color:#8b90a0;font-size:11px;margin-top:4px;">ปกติ ${ratioV}</div>
-        </div>
-        <div class="side right">
-          <div class="side-lbl">สั่งซื้อปกติ (2015+)</div>
-          <div class="side-val norm-val">${(normV/1e6).toFixed(1)}</div>
-          <div class="side-unit">ล้านบาท</div>
+        <div class="comp-row">
+          <div class="comp-row-label">สั่งซื้อปกติ</div>
+          <div class="comp-bar-wrap"><div class="comp-bar norm" style="width:${pMn}%"></div></div>
+          <div class="comp-val norm">${FMT(normM)} ม.</div>
         </div>
       </div>
-      <div style="margin-top:12px;height:6px;border-radius:3px;background:var(--bg-panel);overflow:hidden;">
-        <div style="height:100%;width:${projV+normV>0?Math.round(projV/(projV+normV)*100):0}%;background:#9b59b6;border-radius:3px;transition:width .6s;"></div>
+      <div class="comp-group">
+        <div class="comp-group-label">มูลค่าสายพาน</div>
+        <div class="comp-row">
+          <div class="comp-row-label">เริ่มโครงการ</div>
+          <div class="comp-bar-wrap"><div class="comp-bar proj" style="width:${pVp}%"></div></div>
+          <div class="comp-val proj">${projV.toFixed(2)} M฿</div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-row-label">สั่งซื้อปกติ</div>
+          <div class="comp-bar-wrap"><div class="comp-bar norm" style="width:${pVn}%"></div></div>
+          <div class="comp-val norm">${normV.toFixed(2)} M฿</div>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-3);">
-        <span>เริ่มโครงการ ${projV+normV>0?Math.round(projV/(projV+normV)*100):0}%</span>
-        <span>ปกติ ${projV+normV>0?Math.round(normV/(projV+normV)*100):0}%</span>
-      </div>
-    </div>`;
+      <div class="comp-legend">
+        <span><span class="comp-leg-dot" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+        <span><span class="comp-leg-dot" style="background:#3b9ede"></span>สั่งซื้อปกติ (2015+)</span>
+        <span class="comp-ratio">ปกติมากกว่า: ${ratioM} · ${ratioV}</span>
+      </div>`;
+  });
 
   // ── Belt type charts ──
   renderBeltCharts(data);
@@ -701,6 +736,35 @@ function renderBeltCharts(data){
 
   ['cBeltLenCum','cBeltValCum'].forEach(k=>killChart(k));
 }
+
+// ── Custom plugin: show value labels at end of horizontal bars ──
+const hBarLabelPlugin = {
+  id: 'hBarLabel',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((bar, idx) => {
+        const val = ds.data[idx];
+        if (val === null || val === undefined || val === 0) return;
+        const isLen = di === 0;
+        const label = isLen
+          ? new Intl.NumberFormat('th-TH').format(Math.round(val)) + ' ม.'
+          : val.toFixed(2) + ' M฿';
+        ctx.save();
+        ctx.font = '500 11px Sarabun, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        // bar.x = right edge of bar
+        ctx.fillText(label, bar.x + 6, bar.y);
+        ctx.restore();
+      });
+    });
+  }
+};
+Chart.register(hBarLabelPlugin);
 
 loadData();
 </script>

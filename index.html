@@ -113,7 +113,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .belt-btn:hover{border-color:rgba(240,124,31,.4);color:var(--accent);}
 .belt-btn.active{background:var(--accent-dim);border-color:var(--border-acc);color:var(--accent);}
 
-/* FILTER */
+/* PROJ TOGGLE BUTTON */
+.proj-toggle{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-2);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:.5px;cursor:pointer;transition:all .2s;white-space:nowrap;text-transform:uppercase;}
+.proj-toggle.active{background:rgba(231,76,60,.12);border-color:rgba(231,76,60,.4);color:#e74c3c;}
+.proj-toggle:hover{border-color:rgba(231,76,60,.4);}
+.toggle-dot{width:8px;height:8px;border-radius:50%;background:var(--text-3);transition:background .2s;flex-shrink:0;}
+.proj-toggle.active .toggle-dot{background:#e74c3c;box-shadow:0 0 5px rgba(231,76,60,.6);}
 .fsect{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--rl);padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .flbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
 .fdiv{width:1px;height:20px;background:var(--border);flex-shrink:0;}
@@ -227,8 +232,14 @@ a.lpdf:hover{opacity:1;}
 
     <!-- ── SECTION 3: BELT TYPE SELECTOR ── -->
     <div class="section-label">วิเคราะห์แยกตามชนิดสายพาน</div>
-    <div class="belt-selector" id="beltSelector">
-      <span class="belt-selector-label">เลือกสายพาน :</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+      <div class="belt-selector" id="beltSelector" style="margin-bottom:0;flex:1;">
+        <span class="belt-selector-label">เลือกสายพาน :</span>
+      </div>
+      <button class="proj-toggle active" id="btnProjToggle" onclick="toggleProject()">
+        <span class="toggle-dot"></span>
+        <span id="projToggleLabel">รวมเริ่มโครงการ (2014)</span>
+      </button>
     </div>
     <!-- row: mixed bar + cumulative line charts -->
     <div class="row2">
@@ -298,7 +309,22 @@ const BELT_TYPES = [
 ];
 
 let ALL = [], HDR = [], sCol = -1, sAsc = true, charts = {};
-let activeBelt = 'BW2200'; // default selected belt
+let activeBelt = 'BW2200';
+let includeProject = true; // toggle: รวม/ไม่รวม ปี 2014
+
+function toggleProject(){
+  includeProject = !includeProject;
+  const btn = document.getElementById('btnProjToggle');
+  const lbl = document.getElementById('projToggleLabel');
+  if(includeProject){
+    btn.classList.add('active');
+    lbl.textContent = 'รวมเริ่มโครงการ (2014)';
+  } else {
+    btn.classList.remove('active');
+    lbl.textContent = 'ไม่รวมเริ่มโครงการ (2014)';
+  }
+  renderBeltCharts(getFilt());
+}
 
 const FMT = n => { const v=parseFloat(String(n).replace(/,/g,'')); return isNaN(v)?(n||''):new Intl.NumberFormat('th-TH').format(Math.round(v)); };
 const num = v => parseFloat(String(v||'').replace(/,/g,''))||0;
@@ -574,39 +600,38 @@ function renderAll(){
 function renderBeltCharts(data){
   const iQ=ci('จำนวน'),iV=ci('ราคารวม'),iY=ci('year');
   const bt=BELT_TYPES.find(b=>b.key===activeBelt)||BELT_TYPES[0];
-  const bRows=data.filter(bt.match);
-  const years=uniq(data,iY).sort();
 
-  // update subtitles
-  const el1=document.getElementById('beltChartSub1'); if(el1) el1.textContent=`${bt.label} · แท่ง = แต่ละปี · เส้น = สะสม`;
-  const el2=document.getElementById('beltChartSub2'); if(el2) el2.textContent=`${bt.label} · แท่ง = แต่ละปี · เส้น = สะสม`;
+  // กรองตาม toggle รวม/ไม่รวม ปี 2014
+  const bRows = data.filter(bt.match).filter(r => includeProject ? true : r[iY]!=='2014');
+  const years  = (includeProject ? uniq(data,iY) : uniq(data,iY).filter(y=>y!=='2014')).sort();
+
+  // subtitles
+  const projNote = includeProject ? ' · แดง = เริ่มโครงการ 2014' : ' · ไม่รวมเริ่มโครงการ 2014';
+  const el1=document.getElementById('beltChartSub1'); if(el1) el1.textContent=`${bt.label}${projNote}`;
+  const el2=document.getElementById('beltChartSub2'); if(el2) el2.textContent=`${bt.label}${projNote}`;
 
   // per-year data
-  const lenData = years.map(y => bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
-  const valData = years.map(y => bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iV]),0)/1e6);
-  const barColorsLen = years.map(y => y==='2014' ? '#e74c3c' : bt.color);
-  const barColorsVal = years.map(y => y==='2014' ? '#e74c3c' : bt.color);
+  const lenData = years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
+  const valData = years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iV]),0)/1e6);
+  const barColors = years.map(y=>(includeProject&&y==='2014')?'#e74c3c':bt.color);
 
   // cumulative
   const cumLen=[]; let cL=0; lenData.forEach(v=>{cL+=v; cumLen.push(cL);});
   const cumVal=[]; let cV=0; valData.forEach(v=>{cV+=v; cumVal.push(parseFloat(cV.toFixed(2)));});
 
-  // accent line color: slightly lighter than bt.color
-  const lineColor = '#ffffff';
-
-  const legendHtml = `
-    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
-    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>
-    <span><span class="lsq" style="background:#f0f0f0;border-radius:50%"></span>เส้นสะสม</span>`;
-
+  // legend
+  const legendHtml = includeProject
+    ? `<span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+       <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ (2015+)</span>
+       <span><span class="lsq" style="background:rgba(255,255,255,0.7);border-radius:50%;width:8px;height:8px;"></span>เส้นสะสม</span>`
+    : `<span><span class="lsq" style="background:${bt.color}"></span>${bt.label} (2015+)</span>
+       <span><span class="lsq" style="background:rgba(255,255,255,0.7);border-radius:50%;width:8px;height:8px;"></span>เส้นสะสม</span>`;
   ['lBeltLen','lBeltVal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=legendHtml; });
 
-  // shared chart options factory
   function mixedOpts(yLabel, yLabelRight, cbLeft, cbRight, footerCb){
     return {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode:'index', intersect:false },
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
       plugins:{
         legend:{ display:false },
         tooltip:{
@@ -614,13 +639,12 @@ function renderBeltCharts(data){
           callbacks:{
             label: ctx => {
               if(ctx.dataset.type==='line') return ` สะสม: ${cbRight(ctx.raw)}`;
-              return ` ${ctx.label==='2014'?'เริ่มโครงการ':'ปีนี้'}: ${cbLeft(ctx.raw)}`;
+              const isProj = includeProject && ctx.label==='2014';
+              return ` ${isProj?'เริ่มโครงการ':'ปีนี้'}: ${cbLeft(ctx.raw)}`;
             },
             footer: items => {
-              const barItem = items.find(i=>i.dataset.type!=='line');
-              const lineItem = items.find(i=>i.dataset.type==='line');
-              if(!barItem||!lineItem) return '';
-              return footerCb(barItem.raw, lineItem.raw);
+              const li=items.find(i=>i.dataset.type==='line');
+              return li ? footerCb(li.raw) : '';
             }
           }
         }
@@ -629,91 +653,52 @@ function renderBeltCharts(data){
         x:{ ticks:{color:'#545968',font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'} },
         yBar:{
           type:'linear', position:'left',
-          ticks:{ color:'#545968', font:{size:10}, callback: cbLeft },
+          ticks:{ color:'#545968', font:{size:10}, callback:cbLeft },
           grid:{ color:'rgba(255,255,255,.06)' },
           title:{ display:true, text:yLabel, color:'#545968', font:{size:9} }
         },
         yCum:{
           type:'linear', position:'right',
-          ticks:{ color:'rgba(255,255,255,0.4)', font:{size:10}, callback: cbRight },
+          ticks:{ color:'rgba(255,255,255,0.35)', font:{size:10}, callback:cbRight },
           grid:{ drawOnChartArea:false },
-          title:{ display:true, text:yLabelRight, color:'rgba(255,255,255,0.4)', font:{size:9} }
+          title:{ display:true, text:yLabelRight, color:'rgba(255,255,255,0.35)', font:{size:9} }
         }
       }
     };
   }
 
-  // ── MIXED CHART: ความยาว ──
+  const lineDs = {
+    type:'line', label:'สะสม',
+    borderColor:'rgba(255,255,255,0.75)', backgroundColor:'rgba(255,255,255,0.04)',
+    borderWidth:2.5, pointRadius:4, pointHoverRadius:7,
+    pointBackgroundColor:'rgba(255,255,255,0.9)', pointBorderColor:'#181c27', pointBorderWidth:2,
+    fill:false, tension:0.3, yAxisID:'yCum', order:1
+  };
+
   killChart('cBeltLen');
-  charts['cBeltLen'] = new Chart(document.getElementById('cBeltLen'), {
-    data:{
-      labels: years,
-      datasets:[
-        {
-          type:'bar', label:'ความยาวแต่ละปี',
-          data: lenData,
-          backgroundColor: barColorsLen,
-          borderRadius: 5, borderSkipped: false,
-          yAxisID: 'yBar', order: 2
-        },
-        {
-          type:'line', label:'สะสม',
-          data: cumLen,
-          borderColor: 'rgba(255,255,255,0.7)',
-          backgroundColor: 'rgba(255,255,255,0.06)',
-          borderWidth: 2, borderDash: [],
-          pointRadius: 4, pointHoverRadius: 6,
-          pointBackgroundColor: 'rgba(255,255,255,0.9)',
-          pointBorderColor: '#181c27', pointBorderWidth: 2,
-          fill: false, tension: 0.3,
-          yAxisID: 'yCum', order: 1
-        }
-      ]
-    },
-    options: mixedOpts(
-      'เมตร/ปี', 'สะสม (เมตร)',
-      v => v>=1000?(v/1000).toFixed(0)+'k':v,
-      v => v>=1000?(v/1000).toFixed(0)+'k':v,
-      (bar,line) => `สะสมทั้งหมด: ${FMT(line)} ม.`
-    )
+  charts['cBeltLen']=new Chart(document.getElementById('cBeltLen'),{
+    data:{ labels:years, datasets:[
+      { type:'bar', label:'ความยาว', data:lenData, backgroundColor:barColors, borderRadius:5, borderSkipped:false, yAxisID:'yBar', order:2 },
+      { ...lineDs, data:cumLen }
+    ]},
+    options: mixedOpts('เมตร/ปี','สะสม (เมตร)',
+      v=>v>=1000?(v/1000).toFixed(0)+'k':String(Math.round(v)),
+      v=>v>=1000?(v/1000).toFixed(0)+'k':String(Math.round(v)),
+      v=>`สะสมทั้งหมด: ${FMT(v)} ม.`)
   });
 
-  // ── MIXED CHART: มูลค่า ──
   killChart('cBeltVal');
-  charts['cBeltVal'] = new Chart(document.getElementById('cBeltVal'), {
-    data:{
-      labels: years,
-      datasets:[
-        {
-          type:'bar', label:'มูลค่าแต่ละปี',
-          data: valData,
-          backgroundColor: barColorsVal,
-          borderRadius: 5, borderSkipped: false,
-          yAxisID: 'yBar', order: 2
-        },
-        {
-          type:'line', label:'สะสม',
-          data: cumVal,
-          borderColor: 'rgba(255,255,255,0.7)',
-          backgroundColor: 'rgba(255,255,255,0.06)',
-          borderWidth: 2,
-          pointRadius: 4, pointHoverRadius: 6,
-          pointBackgroundColor: 'rgba(255,255,255,0.9)',
-          pointBorderColor: '#181c27', pointBorderWidth: 2,
-          fill: false, tension: 0.3,
-          yAxisID: 'yCum', order: 1
-        }
-      ]
-    },
-    options: mixedOpts(
-      'ล้านบาท/ปี', 'สะสม (ล้านบาท)',
-      v => v.toFixed(1)+' M',
-      v => v.toFixed(0)+' M',
-      (bar,line) => `สะสมทั้งหมด: ${line.toFixed(2)} ล้านบาท`
-    )
+  charts['cBeltVal']=new Chart(document.getElementById('cBeltVal'),{
+    data:{ labels:years, datasets:[
+      { type:'bar', label:'มูลค่า', data:valData, backgroundColor:barColors, borderRadius:5, borderSkipped:false, yAxisID:'yBar', order:2 },
+      { ...lineDs, data:cumVal }
+    ]},
+    options: mixedOpts('ล้านบาท/ปี','สะสม (ล้านบาท)',
+      v=>v.toFixed(1)+' M',
+      v=>v.toFixed(0)+' M',
+      v=>`สะสมทั้งหมด: ${v.toFixed(2)} ล้านบาท`)
   });
 
-  // kill old standalone cumulative charts if they exist
   ['cBeltLenCum','cBeltValCum'].forEach(k=>killChart(k));
 }
 

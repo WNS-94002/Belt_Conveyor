@@ -225,92 +225,63 @@ a.lpdf:hover{opacity:1;}
     <div class="section-label">เปรียบเทียบเริ่มโครงการ (2014) vs. สั่งซื้อปกติ (2015+)</div>
     <div class="mgrid2" id="compareGrid"></div>
 
-    <!-- ── SECTION 3: PROJECT vs NORMAL CHARTS ── -->
-    <div class="section-label">การสั่งซื้อ BW1800 & BW2200: เริ่มโครงการ vs. ปกติ</div>
-    <div class="row2">
-      <div class="panel">
-        <div class="ph">
-          <div class="ph-left">
-            <div class="ptitle">BW1800 — เริ่มโครงการ vs. สั่งซื้อปกติ</div>
-            <div class="psub">แดง = เริ่มโครงการ (2014) · น้ำเงิน = ปกติ (2015+)</div>
-          </div>
-          <div class="pbadge">BAR</div>
-        </div>
-        <div style="position:relative;height:230px;"><canvas id="cBW1800" role="img" aria-label="BW1800">BW1800</canvas></div>
-        <div class="legend" id="lBW1800"></div>
-      </div>
-      <div class="panel">
-        <div class="ph">
-          <div class="ph-left">
-            <div class="ptitle">BW2200 — เริ่มโครงการ vs. สั่งซื้อปกติ</div>
-            <div class="psub">แดง = เริ่มโครงการ (2014) · น้ำเงิน = ปกติ (2015+)</div>
-          </div>
-          <div class="pbadge">BAR</div>
-        </div>
-        <div style="position:relative;height:230px;"><canvas id="cBW2200" role="img" aria-label="BW2200">BW2200</canvas></div>
-        <div class="legend" id="lBW2200"></div>
-      </div>
-    </div>
-
-    <!-- ── SECTION 4: BELT TYPE SELECTOR ── -->
+    <!-- ── SECTION 3: BELT TYPE SELECTOR ── -->
     <div class="section-label">วิเคราะห์แยกตามชนิดสายพาน</div>
     <div class="belt-selector" id="beltSelector">
       <span class="belt-selector-label">เลือกสายพาน :</span>
     </div>
+    <!-- row 1: bar charts -->
     <div class="row2">
       <div class="panel">
         <div class="ph">
           <div class="ph-left">
-            <div class="ptitle" id="beltChartTitle1">ความยาวที่สั่งซื้อ</div>
-            <div class="psub" id="beltChartSub1">แยกตามปี</div>
+            <div class="ptitle" id="beltChartTitle1">ความยาวที่สั่งซื้อแต่ละปี</div>
+            <div class="psub" id="beltChartSub1">แยกตามปี · แดง = เริ่มโครงการ</div>
           </div>
           <div class="pbadge">BAR — เมตร</div>
         </div>
-        <div style="position:relative;height:260px;"><canvas id="cBeltLen" role="img" aria-label="Belt length by year">Length</canvas></div>
+        <div style="position:relative;height:240px;"><canvas id="cBeltLen" role="img" aria-label="Belt length by year">Length</canvas></div>
         <div class="legend" id="lBeltLen"></div>
       </div>
       <div class="panel">
         <div class="ph">
           <div class="ph-left">
-            <div class="ptitle" id="beltChartTitle2">มูลค่าที่สั่งซื้อ</div>
-            <div class="psub" id="beltChartSub2">แยกตามปี</div>
+            <div class="ptitle" id="beltChartTitle2">มูลค่าที่สั่งซื้อแต่ละปี</div>
+            <div class="psub" id="beltChartSub2">แยกตามปี · แดง = เริ่มโครงการ</div>
           </div>
           <div class="pbadge">BAR — ล้านบาท</div>
         </div>
-        <div style="position:relative;height:260px;"><canvas id="cBeltVal" role="img" aria-label="Belt value by year">Value</canvas></div>
+        <div style="position:relative;height:240px;"><canvas id="cBeltVal" role="img" aria-label="Belt value by year">Value</canvas></div>
         <div class="legend" id="lBeltVal"></div>
       </div>
     </div>
-
-    <!-- ── SECTION 5: WIDTH STACKED ── -->
-    <div class="section-label">จำนวนเมตรแยกตามขนาดสายพาน (Belt Width) แต่ละปี</div>
-    <div class="panel">
-      <div class="ph">
-        <div class="ph-left">
-          <div class="ptitle">Belt Width แต่ละปี</div>
-          <div class="psub">Stacked bar — BW1600 / BW1800 / BW2200 / BW2400 / อื่นๆ</div>
+    <!-- row 2: cumulative line charts -->
+    <div class="row2">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle" id="beltChartTitle3">ความยาวสะสม (Cumulative)</div>
+            <div class="psub" id="beltChartSub3">ยอดสะสมความยาวตามปี</div>
+          </div>
+          <div class="pbadge">LINE — เมตรสะสม</div>
         </div>
-        <div class="pbadge">STACKED BAR</div>
+        <div style="position:relative;height:240px;"><canvas id="cBeltLenCum" role="img" aria-label="Cumulative belt length">Cumulative Length</canvas></div>
+        <div class="legend" id="lBeltLenCum"></div>
       </div>
-      <div style="position:relative;height:270px;"><canvas id="cWidth" role="img" aria-label="Width stacked">Width</canvas></div>
-      <div class="legend" id="lWidth"></div>
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-left">
+            <div class="ptitle" id="beltChartTitle4">มูลค่าสะสม (Cumulative)</div>
+            <div class="psub" id="beltChartSub4">ยอดสะสมมูลค่าตามปี</div>
+          </div>
+          <div class="pbadge">LINE — ล้านบาทสะสม</div>
+        </div>
+        <div style="position:relative;height:240px;"><canvas id="cBeltValCum" role="img" aria-label="Cumulative belt value">Cumulative Value</canvas></div>
+        <div class="legend" id="lBeltValCum"></div>
+      </div>
     </div>
 
-    <!-- ── SECTION 6: VALUE STACKED ── -->
-    <div class="section-label">มูลค่าการสั่งซื้อแต่ละปี แยก BW2200 · BW1800 · สายพานเครื่องจักรอื่น</div>
-    <div class="panel">
-      <div class="ph">
-        <div class="ph-left">
-          <div class="ptitle">มูลค่า (ล้านบาท) แยกประเภท</div>
-          <div class="psub">BW2200 · BW1800 · สายพานเครื่องจักรอื่น (BW1600, BW2400, ...)</div>
-        </div>
-        <div class="pbadge">STACKED BAR</div>
-      </div>
-      <div style="position:relative;height:270px;"><canvas id="cValue" role="img" aria-label="Value stacked">Value</canvas></div>
-      <div class="legend" id="lValue"></div>
-    </div>
-
-    <!-- ── SECTION 7: TABLE ── -->
+    <!-- ── TABLE ── -->
     <div class="section-label">ข้อมูลทั้งหมด</div>
     <div class="fsect">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#545968" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -593,69 +564,8 @@ function renderAll(){
       </div>
     </div>`;
 
-  // ── Charts BW1800 & BW2200 ──
-  ['BW1800','BW2200'].forEach(bw=>{
-    const cid='c'+bw, lid='l'+bw;
-    const bwRows=data.filter(r=>getBW(r)===bw);
-    const bwYears=uniq(bwRows,iY).sort();
-    const barColors=bwYears.map(y=>y==='2014'?'#e74c3c':'#3b9ede');
-    const barData=bwYears.map(y=>bwRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
-    document.getElementById(lid).innerHTML=`
-      <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
-      <span><span class="lsq" style="background:#3b9ede"></span>สั่งซื้อปกติ (2015+)</span>`;
-    killChart(cid);
-    if(!bwRows.length)return;
-    charts[cid]=new Chart(document.getElementById(cid),{type:'bar',
-      data:{labels:bwYears,datasets:[{data:barData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${FMT(c.raw)} ม.`,title:i=>`ปี ${i[0].label} · ${bw}`}}},
-        scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-                y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.04)'}}}}
-    });
-  });
-
   // ── Belt type charts ──
   renderBeltCharts(data);
-
-  // ── Stacked Width ──
-  const widthOrder=['BW1600','BW1800','BW2000','BW2200','BW2400','BW2600','BW2800'];
-  const wColors={'BW1600':'#f07c1f','BW1800':'#3b9ede','BW2000':'#f1c40f','BW2200':'#2ecc71','BW2400':'#9b59b6','BW2600':'#1abc9c','BW2800':'#e74c3c'};
-  const wMap={};
-  data.forEach(r=>{const y=r[iY];if(!y)return;const w=getBW(r);if(!wMap[w])wMap[w]={};wMap[w][y]=(wMap[w][y]||0)+num(r[iQ]);});
-  const wPresent=widthOrder.filter(w=>wMap[w]);
-  document.getElementById('lWidth').innerHTML=wPresent.map(w=>`<span><span class="lsq" style="background:${wColors[w]||'#545968'}"></span>${w}</span>`).join('');
-  killChart('cWidth');
-  charts['cWidth']=new Chart(document.getElementById('cWidth'),{type:'bar',
-    data:{labels:years,datasets:wPresent.map(w=>({label:w,data:years.map(y=>wMap[w]?.[y]||0),backgroundColor:wColors[w]||'#545968',borderRadius:0,borderSkipped:false}))},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.dataset.label}: ${FMT(c.raw)} ม.`,footer:items=>`รวม: ${FMT(items.reduce((s,i)=>s+i.raw,0))} ม.`}}},
-      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
-              y:{ticks:{color:'#545968',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}}}
-  });
-
-  // ── Stacked Value ──
-  const v2200={},v1800={},vOther={};
-  data.forEach(r=>{const y=r[iY];if(!y)return;const v=num(r[iV]);const w=getBW(r);
-    if(w==='BW2200')v2200[y]=(v2200[y]||0)+v;
-    else if(w==='BW1800')v1800[y]=(v1800[y]||0)+v;
-    else vOther[y]=(vOther[y]||0)+v;
-  });
-  document.getElementById('lValue').innerHTML=`
-    <span><span class="lsq" style="background:#2ecc71"></span>BW2200</span>
-    <span><span class="lsq" style="background:#3b9ede"></span>BW1800</span>
-    <span><span class="lsq" style="background:#f07c1f"></span>สายพานเครื่องจักรอื่น</span>`;
-  killChart('cValue');
-  charts['cValue']=new Chart(document.getElementById('cValue'),{type:'bar',
-    data:{labels:years,datasets:[
-      {label:'BW2200',data:years.map(y=>(v2200[y]||0)/1e6),backgroundColor:'#2ecc71',borderRadius:0,borderSkipped:false},
-      {label:'BW1800',data:years.map(y=>(v1800[y]||0)/1e6),backgroundColor:'#3b9ede',borderRadius:0,borderSkipped:false},
-      {label:'เครื่องจักรอื่น',data:years.map(y=>(vOther[y]||0)/1e6),backgroundColor:'#f07c1f',borderRadius:0,borderSkipped:false},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>` ${c.dataset.label}: ${c.raw.toFixed(2)} M฿`,footer:items=>`รวม: ${items.reduce((s,i)=>s+i.raw,0).toFixed(2)} ล้านบาท`}}},
-      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:true},
-              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(0)+' M'},grid:{color:'rgba(255,255,255,.04)'},stacked:true}}}
-  });
 
   // ── Table ──
   let sorted=[...data];
@@ -692,22 +602,29 @@ function renderBeltCharts(data){
   const bRows=data.filter(bt.match);
   const years=uniq(data,iY).sort();
 
-  // update subtitles
-  document.getElementById('beltChartSub1').textContent=`${bt.label} — แยกตามปี`;
-  document.getElementById('beltChartSub2').textContent=`${bt.label} — แยกตามปี`;
+  // subtitles
+  ['beltChartSub1','beltChartSub2','beltChartSub3','beltChartSub4'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=bt.label+' — แยกตามปี';
+  });
 
-  // length chart
+  // per-year data
   const lenData=years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
   const valData=years.map(y=>bRows.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iV]),0)/1e6);
   const barColors=years.map(y=>y==='2014'?'#e74c3c':bt.color);
 
-  document.getElementById('lBeltLen').innerHTML=`
-    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
-    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>`;
-  document.getElementById('lBeltVal').innerHTML=`
-    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
-    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>`;
+  // cumulative
+  const cumLen=[]; let cL=0; lenData.forEach(v=>{cL+=v; cumLen.push(cL);});
+  const cumVal=[]; let cV=0; valData.forEach(v=>{cV+=v; cumVal.push(parseFloat(cV.toFixed(2)));});
 
+  const legendHtml=`
+    <span><span class="lsq" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
+    <span><span class="lsq" style="background:${bt.color}"></span>${bt.label} ปกติ</span>`;
+  const cumLegendHtml=`<span><span class="lsq" style="background:${bt.color};border-radius:50%"></span>สะสม ${bt.label}</span>`;
+
+  ['lBeltLen','lBeltVal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=legendHtml; });
+  ['lBeltLenCum','lBeltValCum'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=cumLegendHtml; });
+
+  // ── BAR: ความยาวแต่ละปี ──
   killChart('cBeltLen');
   charts['cBeltLen']=new Chart(document.getElementById('cBeltLen'),{type:'bar',
     data:{labels:years,datasets:[{label:'ความยาว',data:lenData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
@@ -716,10 +633,14 @@ function renderBeltCharts(data){
         title:i=>`ปี ${i[0].label} · ${bt.label}`,
         label:c=>` ${FMT(c.raw)} ม.${c.label==='2014'?' (เริ่มโครงการ)':''}`
       }}},
-      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.04)'}}}}
+      scales:{
+        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
   });
 
+  // ── BAR: มูลค่าแต่ละปี ──
   killChart('cBeltVal');
   charts['cBeltVal']=new Chart(document.getElementById('cBeltVal'),{type:'bar',
     data:{labels:years,datasets:[{label:'มูลค่า',data:valData,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},
@@ -728,8 +649,57 @@ function renderBeltCharts(data){
         title:i=>`ปี ${i[0].label} · ${bt.label}`,
         label:c=>` ${c.raw.toFixed(2)} ล้านบาท${c.label==='2014'?' (เริ่มโครงการ)':''}`
       }}},
-      scales:{x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-              y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(1)+' M'},grid:{color:'rgba(255,255,255,.04)'}}}}
+      scales:{
+        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(1)+' M'},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  // ── LINE: ความยาวสะสม ──
+  killChart('cBeltLenCum');
+  charts['cBeltLenCum']=new Chart(document.getElementById('cBeltLenCum'),{type:'line',
+    data:{labels:years,datasets:[{
+      label:'ความยาวสะสม',data:cumLen,
+      borderColor:bt.color, backgroundColor:bt.color+'22',
+      borderWidth:2.5, pointRadius:5, pointHoverRadius:7,
+      pointBackgroundColor:bt.color, pointBorderColor:'#181c27', pointBorderWidth:2,
+      fill:true, tension:0.3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
+        title:i=>`ปี ${i[0].label} · ${bt.label}`,
+        label:c=>` สะสม ${FMT(c.raw)} ม.`,
+        afterLabel:c=>{ const y=years[c.dataIndex]; const yr=lenData[c.dataIndex]; return ` (ปีนี้: ${FMT(yr)} ม.)`; }
+      }}},
+      scales:{
+        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#545968',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},grid:{color:'rgba(255,255,255,.06)'}}
+      }
+    }
+  });
+
+  // ── LINE: มูลค่าสะสม ──
+  killChart('cBeltValCum');
+  charts['cBeltValCum']=new Chart(document.getElementById('cBeltValCum'),{type:'line',
+    data:{labels:years,datasets:[{
+      label:'มูลค่าสะสม',data:cumVal,
+      borderColor:bt.color, backgroundColor:bt.color+'22',
+      borderWidth:2.5, pointRadius:5, pointHoverRadius:7,
+      pointBackgroundColor:bt.color, pointBorderColor:'#181c27', pointBorderWidth:2,
+      fill:true, tension:0.3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
+        title:i=>`ปี ${i[0].label} · ${bt.label}`,
+        label:c=>` สะสม ${c.raw.toFixed(2)} ล้านบาท`,
+        afterLabel:c=>{ const yr=valData[c.dataIndex]; return ` (ปีนี้: ${yr.toFixed(2)} ล้านบาท)`; }
+      }}},
+      scales:{
+        x:{ticks:{color:'#545968',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#545968',font:{size:10},callback:v=>v.toFixed(0)+' M'},grid:{color:'rgba(255,255,255,.06)'}}
+      }
+    }
   });
 }
 

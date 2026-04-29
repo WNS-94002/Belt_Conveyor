@@ -114,10 +114,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .belt-btn.active{background:var(--accent-dim);border-color:var(--border-acc);color:var(--accent);}
 
 /* METRIC BREAKDOWN */
-.mc-breakdown{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
-.mc-brow{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
-.mc-brow-lbl{font-size:10px;color:var(--text-3);}
-.mc-brow-val{font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:600;}
+.mc-inner{display:flex;gap:14px;align-items:flex-start;}
+.mc-main{flex:0 0 auto;}
+.mc-breakdown{flex:1;padding-left:12px;border-left:1px solid var(--border);min-width:0;}
+.mc-brow{display:flex;justify-content:space-between;align-items:center;padding:2.5px 0;gap:6px;}
+.mc-brow-lbl{font-size:10px;color:var(--text-3);white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.mc-brow-val{font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:600;white-space:nowrap;}
 .comp-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text-1);letter-spacing:1.5px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
 .comp-title .cbadge{font-size:9px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--border-acc);border-radius:4px;padding:2px 8px;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;}
 .comp-group{margin-bottom:16px;}
@@ -379,12 +381,6 @@ async function doLogin() {
       <div class="panel" id="compPanel1800"></div>
     </div>
 
-    <!-- ── SECTION 2b: NORMAL ORDERS ONLY ── -->
-    <div class="section-label">สั่งซื้อปกติ (2015+) เท่านั้น — BW2200 & BW1800</div>
-    <div class="row2" style="margin-bottom:16px;">
-      <div class="panel" id="normPanel2200"></div>
-      <div class="panel" id="normPanel1800"></div>
-    </div>
     <div class="section-label">วิเคราะห์แยกตามชนิดสายพาน</div>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
       <div class="belt-selector" id="beltSelector" style="margin-bottom:0;flex:1;">
@@ -666,9 +662,39 @@ function renderAll(){
   const valHTML = BW_DEFS.map(b=>{const v=data.filter(b.test).reduce((s,r)=>s+num(r[iV]),0)/1e6;return v>0?bwRow(b,v.toFixed(2),'M฿'):''}).join('');
 
   document.getElementById('mgrid').innerHTML=`
-    <div class="mc a1 fi"><div class="mico">📋</div><div class="mlbl">รายการทั้งหมด</div><div class="mval">${data.length}</div><div class="munit">รายการ</div><div class="mc-breakdown">${cntHTML}</div></div>
-    <div class="mc a2 fi"><div class="mico">📏</div><div class="mlbl">จำนวนรวม</div><div class="mval">${FMT(tM)}</div><div class="munit">เมตร</div><div class="mc-breakdown">${mtrHTML}</div></div>
-    <div class="mc a3 fi"><div class="mico">💰</div><div class="mlbl">มูลค่ารวม</div><div class="mval">${(tV/1e6).toFixed(1)}<span style="font-size:15px;opacity:.6"> M</span></div><div class="munit">ล้านบาท</div><div class="mc-breakdown">${valHTML}</div></div>`;
+    <div class="mc a1 fi">
+      <div class="mc-inner">
+        <div class="mc-main">
+          <div class="mico">📋</div>
+          <div class="mlbl">รายการทั้งหมด</div>
+          <div class="mval">${data.length}</div>
+          <div class="munit">รายการ</div>
+        </div>
+        <div class="mc-breakdown">${cntHTML}</div>
+      </div>
+    </div>
+    <div class="mc a2 fi">
+      <div class="mc-inner">
+        <div class="mc-main">
+          <div class="mico">📏</div>
+          <div class="mlbl">จำนวนรวม</div>
+          <div class="mval">${FMT(tM)}</div>
+          <div class="munit">เมตร</div>
+        </div>
+        <div class="mc-breakdown">${mtrHTML}</div>
+      </div>
+    </div>
+    <div class="mc a3 fi">
+      <div class="mc-inner">
+        <div class="mc-main">
+          <div class="mico">💰</div>
+          <div class="mlbl">มูลค่ารวม</div>
+          <div class="mval">${(tV/1e6).toFixed(1)}<span style="font-size:15px;opacity:.6"> M</span></div>
+          <div class="munit">ล้านบาท</div>
+        </div>
+        <div class="mc-breakdown">${valHTML}</div>
+      </div>
+    </div>`;
   document.getElementById('rc').innerHTML=`แสดง <strong>${data.length}</strong> จาก ${ALL.length} รายการ`;
 
   // ── Compare Custom HTML Bars: BW2200 & BW1800 ──
@@ -726,50 +752,6 @@ function renderAll(){
         <span><span class="comp-leg-dot" style="background:#e74c3c"></span>เริ่มโครงการ (2014)</span>
         <span><span class="comp-leg-dot" style="background:#3b9ede"></span>สั่งซื้อปกติ (2015+)</span>
         <span class="comp-ratio">ปกติมากกว่า: ${ratioM} · ${ratioV}</span>
-      </div>`;
-  });
-
-  // ── Normal Orders Only Panels: BW2200 & BW1800 ──
-  ['BW2200','BW1800'].forEach(bw => {
-    const panel = document.getElementById('normPanel' + bw.replace('BW',''));
-    if (!panel) return;
-    const normColor = bw==='BW2200' ? '#2ecc71' : '#3b9ede';
-    const bwRows = data.filter(r => getBW(r) === bw);
-    const norm   = bwRows.filter(r => r[iY] !== '2014' && r[iY] !== '');
-    const normM  = norm.reduce((s,r)=>s+num(r[iQ]),0);
-    const normV  = norm.reduce((s,r)=>s+num(r[iV]),0)/1e6;
-    const normCnt= norm.length;
-    // year breakdown
-    const yrs = uniq(norm, iY).sort();
-    const yBarM = yrs.map(y=>norm.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iQ]),0));
-    const yBarV = yrs.map(y=>norm.filter(r=>r[iY]==y).reduce((s,r)=>s+num(r[iV]),0)/1e6);
-    const maxYM = Math.max(...yBarM, 1);
-    const maxYV = Math.max(...yBarV, 0.01);
-
-    panel.innerHTML = `
-      <div class="comp-title">${bw} <span class="cbadge" style="background:rgba(${bw==='BW2200'?'46,204,113':'59,158,222'},.12);color:${normColor};border-color:rgba(${bw==='BW2200'?'46,204,113':'59,158,222'},.3);">สั่งซื้อปกติ</span></div>
-      <div style="display:flex;gap:20px;margin-bottom:12px;">
-        <div><div class="mc-brow-lbl">รายการ</div><div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:${normColor}">${normCnt}</div></div>
-        <div><div class="mc-brow-lbl">ความยาว</div><div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:${normColor}">${FMT(normM)} ม.</div></div>
-        <div><div class="mc-brow-lbl">มูลค่า</div><div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:${normColor}">${normV.toFixed(2)} M฿</div></div>
-      </div>
-      <div class="comp-group">
-        <div class="comp-group-label">ความยาวแต่ละปี (ม.)</div>
-        ${yrs.map((y,i)=>`
-        <div class="comp-row">
-          <div class="comp-row-label" style="min-width:48px">${y}</div>
-          <div class="comp-bar-wrap"><div style="height:100%;width:${(yBarM[i]/maxYM*100).toFixed(1)}%;background:${normColor};opacity:.8;border-radius:3px;"></div></div>
-          <div class="comp-val" style="color:${normColor}">${FMT(yBarM[i])} ม.</div>
-        </div>`).join('')}
-      </div>
-      <div class="comp-group" style="margin-top:10px">
-        <div class="comp-group-label">มูลค่าแต่ละปี (M฿)</div>
-        ${yrs.map((y,i)=>`
-        <div class="comp-row">
-          <div class="comp-row-label" style="min-width:48px">${y}</div>
-          <div class="comp-bar-wrap"><div style="height:100%;width:${(yBarV[i]/maxYV*100).toFixed(1)}%;background:${normColor};opacity:.6;border-radius:3px;"></div></div>
-          <div class="comp-val" style="color:${normColor}">${yBarV[i].toFixed(2)} M฿</div>
-        </div>`).join('')}
       </div>`;
   });
 

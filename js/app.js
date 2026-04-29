@@ -520,7 +520,10 @@ function _renderTable(data, iT, iY, iL, iQ) {
         return `<td><span class="badge ${isS ? 'bst' : 'bfa'}">${isS ? 'Steel Cord' : 'Fabric'}</span></td>`;
       }
       if (ci2 === iY && cell) return `<td><span class="badge byr">${cell}</span></td>`;
-      if (ci2 === iL) return `<td>${cell && cell.startsWith('http') ? `<a class="lpdf" href="${cell}" target="_blank">PDF</a>` : ''}</td>`;
+      if (ci2 === iL) {
+        const safeUrl = cell && /^https:\/\//i.test(cell) ? cell : null;
+        return `<td>${safeUrl ? `<a class="lpdf" href="${safeUrl}" target="_blank" rel="noopener noreferrer">PDF</a>` : ''}</td>`;
+      }
 
       const isNum   = !isNaN(parseFloat(String(cell).replace(/,/g, ''))) && cell !== '';
       const isPrice = HDR[ci2] && (HDR[ci2].includes('ราคา') || HDR[ci2].includes('จำนวน'));

@@ -145,6 +145,7 @@ async function doLogin() {
     if (ok) {
       resetRateData();
       sessionStorage.setItem(SESSION_KEY, 'ok');
+      sessionStorage.setItem('cb_user', user);
       const ls = document.getElementById('loginScreen');
       ls.style.transition = 'opacity .5s';
       ls.style.opacity    = '0';

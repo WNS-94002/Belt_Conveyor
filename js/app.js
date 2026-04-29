@@ -248,6 +248,7 @@ async function loadData() {
     document.getElementById('main').style.display     = 'block';
     document.getElementById('lastSync').textContent   = new Date().toLocaleString('th-TH', { hour12: false });
 
+    _showUsername();
     setStatus('live');
     renderAll();
     btn.classList.remove('spinning');
@@ -329,18 +330,20 @@ function toggleProject() {
   renderBeltCharts(getFilt());
 }
 
-/** Return filtered data based on current dropdown selections */
+/** Return filtered data based on current dropdown selections + text search */
 function getFilt() {
   const fy = document.getElementById('fY').value;
   const fb = document.getElementById('fB').value;
   const ft = document.getElementById('fT').value;
   const fm = document.getElementById('fM').value;
+  const fs = (document.getElementById('fSearch').value || '').trim().toLowerCase();
   const iY = ci('year'), iB = ci('ยี่ห้อ'), iT = ci('type'), iM = ci('เครื่องจักร');
   return ALL.filter(r =>
     (!fy || r[iY] == fy) &&
     (!fb || r[iB] == fb) &&
     (!ft || r[iT] == ft) &&
-    (!fm || r[iM] == fm)
+    (!fm || r[iM] == fm) &&
+    (!fs || r.some(cell => String(cell).toLowerCase().includes(fs)))
   );
 }
 
@@ -348,6 +351,77 @@ function getFilt() {
 function sb(col) {
   if (sCol === col) sAsc = !sAsc; else { sCol = col; sAsc = true; }
   renderAll();
+}
+
+// ══════════════════════════════════════════════
+//  LOGOUT / USERNAME
+// ══════════════════════════════════════════════
+
+function logout() {
+  sessionStorage.removeItem('cb_session');
+  sessionStorage.removeItem('cb_user');
+  const ls = document.getElementById('loginScreen');
+  ls.style.opacity = '0';
+  ls.style.display = 'flex';
+  requestAnimationFrame(() => { ls.style.transition = 'opacity .3s'; ls.style.opacity = '1'; });
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  authCache = null;
+}
+
+function _showUsername() {
+  const u = sessionStorage.getItem('cb_user');
+  if (!u) return;
+  const info = document.getElementById('userInfo');
+  const name = document.getElementById('currentUser');
+  if (info) info.style.display = '';
+  if (name) name.textContent = u;
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════════
+
+function exportCSV() {
+  const data = getFilt();
+  if (!data.length) return;
+  const rows = [HDR, ...data];
+  const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `belt_conveyor_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════
+//  TREND HELPER
+// ══════════════════════════════════════════════
+
+function _getTrend(data) {
+  const iY = ci('year'), iQ = ci('จำนวน'), iV = ci('ราคารวม');
+  const years = uniq(data, iY).filter(y => y !== '').sort();
+  if (years.length < 2) return null;
+  const cur  = years[years.length - 1];
+  const prev = years[years.length - 2];
+  const curQ  = data.filter(r => r[iY] === cur).reduce((s, r) => s + num(r[iQ]), 0);
+  const prevQ = data.filter(r => r[iY] === prev).reduce((s, r) => s + num(r[iQ]), 0);
+  const curV  = data.filter(r => r[iY] === cur).reduce((s, r) => s + num(r[iV]), 0);
+  const prevV = data.filter(r => r[iY] === prev).reduce((s, r) => s + num(r[iV]), 0);
+  return {
+    prevYear: prev,
+    qPct: prevQ > 0 ? (curQ - prevQ) / prevQ * 100 : null,
+    vPct: prevV > 0 ? (curV - prevV) / prevV * 100 : null,
+  };
+}
+
+function _trendBadge(pct, prevYear) {
+  if (pct === null) return '';
+  const up  = pct >= 0;
+  const cls = up ? 'mtrend-up' : 'mtrend-dn';
+  return `<div class="mtrend ${cls}">${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}% จากปี ${prevYear}</div>`;
 }
 
 // ══════════════════════════════════════════════
@@ -379,8 +453,9 @@ function renderAll() {
 
 // ── Sub-renderer: metric cards with BW breakdown ──
 function _renderMetrics(data, iQ, iV) {
-  const tM = data.reduce((s, r) => s + num(r[iQ]), 0);
-  const tV = data.reduce((s, r) => s + num(r[iV]), 0);
+  const tM    = data.reduce((s, r) => s + num(r[iQ]), 0);
+  const tV    = data.reduce((s, r) => s + num(r[iV]), 0);
+  const trend = _getTrend(data);
 
   function bwRow(b, val, unit) {
     return `<div class="mc-brow">
@@ -415,6 +490,7 @@ function _renderMetrics(data, iQ, iV) {
           <div class="mlbl">จำนวนรวม</div>
           <div class="mval">${FMT(tM)}</div>
           <div class="munit">เมตร</div>
+          ${trend ? _trendBadge(trend.qPct, trend.prevYear) : ''}
         </div>
         <div class="mc-breakdown">${mtrHTML}</div>
       </div>
@@ -426,6 +502,7 @@ function _renderMetrics(data, iQ, iV) {
           <div class="mlbl">มูลค่ารวม</div>
           <div class="mval">${(tV / 1e6).toFixed(1)}<span style="font-size:15px;opacity:.6"> M</span></div>
           <div class="munit">ล้านบาท</div>
+          ${trend ? _trendBadge(trend.vPct, trend.prevYear) : ''}
         </div>
         <div class="mc-breakdown">${valHTML}</div>
       </div>

@@ -4,11 +4,13 @@
  */
 
 const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
+// startRow = sheet row number where header begins (for sheets with title/map rows above)
+// hdrs     = number of header rows GViz should merge (1 = normal, 2 = main+sub header)
 const LINES = [
-  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAt: null },
-  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAt: null },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAt: 12   },
-  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAt: null },
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAt: null, startRow: null, hdrs: 1 },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAt: null, startRow: null, hdrs: 1 },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAt: 12,   startRow: 14,   hdrs: 2 },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAt: null, startRow: null, hdrs: 1 },
 ];
 
 // SMU Belt → belt age color (green / yellow / red / dark)
@@ -78,7 +80,11 @@ function fetchLine(line) {
   return new Promise((resolve, reject) => {
     const cbName = `_gviz_${line.name}_${Date.now()}`;
     const s = document.createElement('script');
-    s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}&tqx=out:json&callback=${cbName}`;
+    // For sheets with title rows, specify range and multi-row headers
+    const rangeParam = line.startRow
+      ? `&range=A${line.startRow}:Z${line.startRow + 60}&headers=${line.hdrs || 1}`
+      : '';
+    s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}${rangeParam}&tqx=out:json&callback=${cbName}`;
     let done = false;
     window[cbName] = d => {
       done = true; delete window[cbName]; document.head.removeChild(s);
@@ -91,7 +97,9 @@ function fetchLine(line) {
 }
 
 async function fetchLineFallback(line) {
-  const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}`;
+  // CSV export: specify range when sheet has title rows above the data header
+  const rangeParam = line.startRow ? `&range=A${line.startRow}:Z${line.startRow + 60}` : '';
+  const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}${rangeParam}`;
   const res  = await fetch(url, { mode: 'cors' });
   const text = await res.text();
   if (!text.trim().startsWith('<!')) return parseCSV(text);
@@ -120,10 +128,18 @@ async function loadCondData() {
   results.forEach((r, i) => {
     const line = LINES[i];
     if (r.status === 'fulfilled' && r.value?.rows?.length) {
-      lineData[line.name] = { hdr: r.value.cols, rows: r.value.rows };
+      const hdr  = r.value.cols;
+      const cols = detectCols(hdr);
+      // Filter out sub-header rows and empty rows (keep only rows with a positive length value)
+      const rows = r.value.rows.filter(row => {
+        if (cols.length >= 0) return num(row[cols.length]) > 0;
+        // Fallback: keep row if any numeric cell exists
+        return row.some(cell => num(cell) > 0);
+      });
+      lineData[line.name] = { hdr, cols, rows };
       loaded++;
     } else {
-      lineData[line.name] = { hdr: [], rows: [] };
+      lineData[line.name] = { hdr: [], cols: {}, rows: [] };
     }
   });
 
@@ -225,8 +241,7 @@ function switchLinetab(name) {
   });
 
   if (!renderedLines.has(name) && lineData[name]?.rows.length) {
-    const { hdr, rows } = lineData[name];
-    const cols = detectCols(hdr);
+    const { cols, rows } = lineData[name];
     renderLineCards(name, rows, cols, line.color);
     renderBeltMap(name, rows, cols);
     renderLineCharts(name, rows, cols, line.color);

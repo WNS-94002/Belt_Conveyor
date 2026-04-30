@@ -1,52 +1,93 @@
 /**
- * condition.js — Belt Condition Dashboard
- * Italianthai Hongsa
- *
- * Fetches inspection data (thickness, hardness, damage) from a separate sheet.
- * Depends on: Chart.js, app.js (parseGViz, parseCSV, num, FMT, uniq, TT)
+ * condition.js — Belt Condition Dashboard (per-line Belt Map)
+ * Lines: S1, S2A, S2B, S2C — each fetched from a separate Sheet tab
  */
 
 const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
-const COND_GID      = '421967062';
+const LINES = [
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71' },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede' },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f' },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6' },
+];
 
-let COND_ALL   = [];
-let COND_HDR   = [];
-let condLoaded = false;
-let condCharts = {};
+let lineData      = {};      // { S1: {hdr, rows}, S2A: ..., ... }
+let condLoaded    = false;
+let condCharts    = {};
+let renderedLines = new Set();
+let activeLinetab = 'S1';
 
 // ══════════════════════════════════════════════
-//  COLUMN HELPERS
+//  COLUMN DETECTION
 // ══════════════════════════════════════════════
 
-function condCI(kw) {
-  const k = kw.toLowerCase();
-  let i = COND_HDR.findIndex(h => h.toLowerCase() === k);
-  return i >= 0 ? i : COND_HDR.findIndex(h => h.toLowerCase().includes(k));
-}
-function condAllCI(kw) {
-  const k = kw.toLowerCase();
-  return COND_HDR.reduce((a, h, i) => { if (h.toLowerCase().includes(k)) a.push(i); return a; }, []);
-}
-function killCChart(key) {
-  if (condCharts[key]) { try { condCharts[key].destroy(); } catch(e) {} delete condCharts[key]; }
+function detectCols(hdr) {
+  const find = (...kws) => {
+    for (const kw of kws) {
+      const k = kw.toLowerCase();
+      let i = hdr.findIndex(h => h.toLowerCase() === k);
+      if (i >= 0) return i;
+      i = hdr.findIndex(h => h.toLowerCase().includes(k));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+  const findAll = kw => {
+    const k = kw.toLowerCase();
+    return hdr.reduce((a, h, i) => { if (h.toLowerCase().includes(k)) a.push(i); return a; }, []);
+  };
+
+  const hardAll = findAll('hard');
+  const edgeAll = findAll('edge');
+
+  return {
+    joint:   find('no.', 'no'),
+    mark:    find('mark'),
+    length:  find('length'),
+    brand:   find('brand'),
+    type:    find('type'),
+    year:    find('po year', 'year'),
+    smu:     find('smu'),
+    hardTop: hardAll[0] ?? -1,
+    hardBot: hardAll[1] ?? -1,
+    thickL:  find('l.edge', 'l edge') >= 0 ? find('l.edge', 'l edge') : (edgeAll[0] ?? -1),
+    thickR:  find('r.edge', 'r edge') >= 0 ? find('r.edge', 'r edge') : (edgeAll[1] ?? -1),
+    thickC:  find('center'),
+    hole:    find('หลุม'),
+    cut:     find('รอยบาด'),
+    tear:    find('รอยฉีก'),
+    crack:   find('รอยแตก'),
+    cond:    find('condition'),
+    group:   find('group'),
+  };
 }
 
 // ══════════════════════════════════════════════
 //  DATA FETCHING
 // ══════════════════════════════════════════════
 
-function loadCondViaGViz(cb) {
-  const cbName = '_condgviz_' + Date.now();
-  const s = document.createElement('script');
-  s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${COND_GID}&tqx=out:json&callback=${cbName}`;
-  let done = false;
-  window[cbName] = d => {
-    done = true; delete window[cbName]; document.head.removeChild(s);
-    try { cb(null, parseGViz(d)); } catch(e) { cb(e); }
-  };
-  s.onerror = () => { if (!done) { done = true; cb(new Error('Script load failed')); } };
-  setTimeout(() => { if (!done) { done = true; cb(new Error('Timeout')); } }, 12000);
-  document.head.appendChild(s);
+function fetchLine(line) {
+  return new Promise((resolve, reject) => {
+    const cbName = `_gviz_${line.name}_${Date.now()}`;
+    const s = document.createElement('script');
+    s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}&tqx=out:json&callback=${cbName}`;
+    let done = false;
+    window[cbName] = d => {
+      done = true; delete window[cbName]; document.head.removeChild(s);
+      try { resolve(parseGViz(d)); } catch(e) { reject(e); }
+    };
+    s.onerror = () => { if (!done) { done = true; reject(new Error(`Load failed: ${line.name}`)); } };
+    setTimeout(() => { if (!done) { done = true; reject(new Error(`Timeout: ${line.name}`)); } }, 15000);
+    document.head.appendChild(s);
+  });
+}
+
+async function fetchLineFallback(line) {
+  const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}`;
+  const res  = await fetch(url, { mode: 'cors' });
+  const text = await res.text();
+  if (!text.trim().startsWith('<!')) return parseCSV(text);
+  return null;
 }
 
 async function loadCondData() {
@@ -55,37 +96,45 @@ async function loadCondData() {
   el('condMain').style.display    = 'none';
   el('condErr').style.display     = 'none';
   el('condDot').className         = 'sdot';
-  el('condTxt').textContent       = 'กำลังโหลดข้อมูล...';
+  el('condTxt').textContent       = 'กำลังโหลดข้อมูล Belt Map...';
 
-  loadCondViaGViz(async (err, result) => {
-    if (err || !result) {
-      try {
-        const res  = await fetch(`https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${COND_GID}`, { mode: 'cors' });
-        const text = await res.text();
-        if (!text.trim().startsWith('<!')) result = parseCSV(text);
-      } catch(e) {}
+  const results = await Promise.allSettled(LINES.map(fetchLine));
+
+  // Fallback to CSV for failed lines
+  for (let i = 0; i < LINES.length; i++) {
+    if (results[i].status === 'rejected') {
+      try { results[i] = { status: 'fulfilled', value: await fetchLineFallback(LINES[i]) }; }
+      catch(e) { results[i] = { status: 'rejected', reason: e }; }
     }
+  }
 
-    if (!result || !result.rows.length) {
-      el('condLoading').style.display = 'none';
-      el('condErr').style.display     = 'block';
-      el('condErrMsg').textContent    = 'ไม่สามารถโหลดข้อมูลได้ — ตรวจสอบว่า Sheet เป็น Public';
-      el('condDot').classList.add('err');
-      el('condTxt').textContent = 'Connection error';
-      return;
+  let loaded = 0;
+  results.forEach((r, i) => {
+    const line = LINES[i];
+    if (r.status === 'fulfilled' && r.value?.rows?.length) {
+      lineData[line.name] = { hdr: r.value.cols, rows: r.value.rows };
+      loaded++;
+    } else {
+      lineData[line.name] = { hdr: [], rows: [] };
     }
-
-    COND_HDR   = result.cols;
-    COND_ALL   = result.rows;
-    condLoaded = true;
-
-    el('condLoading').style.display = 'none';
-    el('condMain').style.display    = 'block';
-    el('condDot').classList.add('live');
-    el('condTxt').textContent = `Connected · ${COND_ALL.length} inspection records`;
-
-    renderCondition();
   });
+
+  if (loaded === 0) {
+    el('condLoading').style.display = 'none';
+    el('condErr').style.display     = 'block';
+    el('condErrMsg').textContent    = 'ไม่สามารถโหลดข้อมูลได้ — ตรวจสอบว่า Sheet เป็น Public';
+    el('condDot').classList.add('err');
+    el('condTxt').textContent = 'Connection error';
+    return;
+  }
+
+  condLoaded = true;
+  el('condLoading').style.display = 'none';
+  el('condMain').style.display    = 'block';
+  el('condDot').classList.add('live');
+  el('condTxt').textContent = `Connected · Belt Map: ${LINES.map(l => l.name).join(', ')}`;
+
+  renderCondition();
 }
 
 // ══════════════════════════════════════════════
@@ -93,289 +142,280 @@ async function loadCondData() {
 // ══════════════════════════════════════════════
 
 function renderCondition() {
-  const iDate   = condCI('date');
-  const iLine   = condCI('line');
-  const iJoint  = condCI('joint');
-  const iBrand  = condCI('brand');
-  const iShort  = condCI('short');
-  const iSMU    = condCI('smu');
-  const iActive = condCI('active');
+  // Line sub-tabs
+  document.getElementById('lineTabs').innerHTML = LINES.map(l => `
+    <button class="line-tab-btn" id="ltab-${l.name}" onclick="switchLinetab('${l.name}')">
+      <span class="ltab-dot" style="background:${l.color}"></span>${l.name}
+    </button>`).join('');
 
-  // AVG columns order: [HardnessTopAVG, HardnessBotAVG, ...ThicknessAVGs]
-  const avgCols     = condAllCI('avg');
-  const iHardTopAvg = avgCols[0]  ?? -1;
-  const iHardBotAvg = avgCols[1]  ?? -1;
-  const iThickAvg   = avgCols[avgCols.length - 1] ?? -1;
+  // Content panes per line
+  document.getElementById('lineContent').innerHTML = LINES.map(l => `
+    <div id="lcontent-${l.name}" style="display:none">
+      <!-- Cards -->
+      <div class="mgrid4" id="lcards-${l.name}"></div>
 
-  const iHole  = condCI('หลุม');
-  const iCut   = condCI('รอยบาด');
-  const iTear  = condCI('รอยฉีก');
-  const iCrack = condCI('รอยแตก');
-  const iEdgeR = condCI('ขอบขวา');
-  const iEdgeL = condCI('ขอบซ้าย');
-  const iSling = condCI('สลิง');
-  const iThru  = condCI('ทะลุ');
+      <!-- Belt Map -->
+      <div class="section-label">Belt Map · สัดส่วนความยาวและสภาพ Joint</div>
+      <div class="panel" id="bmap-${l.name}" style="padding:18px 20px;"></div>
 
-  const C = { iDate, iLine, iJoint, iBrand, iShort, iSMU, iActive,
-               iHardTopAvg, iHardBotAvg, iThickAvg,
-               iHole, iCut, iTear, iCrack, iEdgeR, iEdgeL, iSling, iThru };
-  const dmgCols = [iHole, iCut, iTear, iCrack, iEdgeR, iEdgeL, iSling, iThru].filter(i => i >= 0);
+      <!-- Charts -->
+      <div class="section-label">ความหนา & ความแข็ง รายละเอียดแต่ละ Joint</div>
+      <div class="row2">
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-left">
+              <div class="ptitle">ความหนา (mm)</div>
+              <div class="psub">L.Edge · R.Edge</div>
+            </div>
+            <div class="pbadge">BAR</div>
+          </div>
+          <div style="position:relative;height:250px"><canvas id="cThick-${l.name}"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-left">
+              <div class="ptitle">ความแข็ง Shore A</div>
+              <div class="psub">Top · Bottom</div>
+            </div>
+            <div class="pbadge">BAR</div>
+          </div>
+          <div style="position:relative;height:250px"><canvas id="cHard-${l.name}"></canvas></div>
+        </div>
+      </div>
 
-  const activeRows = COND_ALL.filter(r => String(r[iActive]).toUpperCase() === 'TRUE');
+      <!-- Table -->
+      <div class="section-label">รายละเอียดแต่ละ Joint</div>
+      <div class="twrap"><div class="tscroll">
+        <table>
+          <thead><tr id="lthead-${l.name}"></tr></thead>
+          <tbody id="ltbody-${l.name}"></tbody>
+        </table>
+      </div></div>
+    </div>`).join('');
 
-  _renderCondCards(activeRows, C, dmgCols);
-  _renderLineHealth(activeRows, C, dmgCols);
-  _renderThicknessTrend(COND_ALL, C);
-  _renderDamageChart(COND_ALL, C, dmgCols);
-  _renderBrandChart(activeRows, C);
-  _renderCondTable(COND_ALL, C, dmgCols);
+  switchLinetab(activeLinetab);
 }
 
 // ══════════════════════════════════════════════
-//  1 · OVERVIEW CARDS
+//  LINE TAB SWITCHING
 // ══════════════════════════════════════════════
 
-function _renderCondCards(rows, C, dmgCols) {
+function switchLinetab(name) {
+  activeLinetab = name;
+  const line = LINES.find(l => l.name === name);
+
+  LINES.forEach(l => {
+    const btn  = document.getElementById(`ltab-${l.name}`);
+    const pane = document.getElementById(`lcontent-${l.name}`);
+    const active = l.name === name;
+    if (btn) {
+      btn.classList.toggle('active', active);
+      btn.style.borderColor = active ? l.color : '';
+      btn.style.color       = active ? l.color : '';
+    }
+    if (pane) pane.style.display = active ? '' : 'none';
+  });
+
+  if (!renderedLines.has(name) && lineData[name]?.rows.length) {
+    const { hdr, rows } = lineData[name];
+    const cols = detectCols(hdr);
+    renderLineCards(name, rows, cols, line.color);
+    renderBeltMap(name, rows, cols);
+    renderLineCharts(name, rows, cols, line.color);
+    renderLineTable(name, rows, cols);
+    renderedLines.add(name);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CARDS
+// ══════════════════════════════════════════════
+
+function renderLineCards(name, rows, cols, color) {
   const avg = col => {
-    const vals = rows.map(r => num(r[col])).filter(v => v > 0);
-    return vals.length ? vals.reduce((a,b) => a + b, 0) / vals.length : 0;
+    const v = rows.map(r => num(r[col])).filter(v => v > 0);
+    return v.length ? v.reduce((a,b) => a+b)/v.length : 0;
   };
-  const lines    = new Set(rows.map(r => r[C.iLine]).filter(v => v));
-  const hardTop  = avg(C.iHardTopAvg);
-  const thick    = avg(C.iThickAvg);
-  const totalDmg = rows.reduce((s, r) => s + dmgCols.reduce((d, col) => d + num(r[col]), 0), 0);
+  const dmgCols  = [cols.hole, cols.cut, cols.tear, cols.crack].filter(i => i >= 0);
+  const totalLen = rows.reduce((s, r) => s + num(r[cols.length]), 0);
+  const avgL     = avg(cols.thickL), avgR = avg(cols.thickR);
+  const avgThick = avgL > 0 && avgR > 0 ? (avgL + avgR) / 2 : avgL || avgR;
+  const avgHard  = avg(cols.hardTop);
+  const totalDmg = rows.reduce((s, r) => s + dmgCols.reduce((d, i) => d + num(r[i]), 0), 0);
 
-  const tColor = thick   >= 30 ? '#2ecc71' : thick   >= 25 ? '#f1c40f' : '#e74c3c';
-  const hColor = hardTop >= 60 ? '#2ecc71' : hardTop >= 55 ? '#f1c40f' : '#e74c3c';
+  const tColor = avgThick >= 32 ? '#2ecc71' : avgThick >= 28 ? '#f1c40f' : '#e74c3c';
 
-  document.getElementById('condCards').innerHTML = `
-    <div class="mc a2 fi">
-      <div class="mc-inner"><div class="mc-main">
-        <div class="mico">🔗</div>
-        <div class="mlbl">Joint Active</div>
-        <div class="mval" style="color:var(--accent2)">${rows.length}</div>
-        <div class="munit">${lines.size} Lines</div>
-      </div></div>
-    </div>
-    <div class="mc a3 fi">
-      <div class="mc-inner"><div class="mc-main">
-        <div class="mico">📏</div>
-        <div class="mlbl">ความหนาเฉลี่ย</div>
-        <div class="mval" style="color:${tColor}">${thick.toFixed(1)}</div>
-        <div class="munit">มิลลิเมตร</div>
-      </div></div>
-    </div>
-    <div class="mc a1 fi">
-      <div class="mc-inner"><div class="mc-main">
-        <div class="mico">💪</div>
-        <div class="mlbl">ความแข็งเฉลี่ย (Top)</div>
-        <div class="mval" style="color:${hColor}">${hardTop.toFixed(1)}</div>
-        <div class="munit">Shore A</div>
-      </div></div>
-    </div>
-    <div class="mc a4 fi">
-      <div class="mc-inner"><div class="mc-main">
-        <div class="mico">⚠️</div>
-        <div class="mlbl">ความเสียหายรวม</div>
-        <div class="mval" style="color:${totalDmg > 0 ? 'var(--danger)' : 'var(--success)'}">${FMT(totalDmg)}</div>
-        <div class="munit">จุด (Active joints)</div>
-      </div></div>
-    </div>`;
+  document.getElementById(`lcards-${name}`).innerHTML = `
+    <div class="mc a2 fi"><div class="mc-inner"><div class="mc-main">
+      <div class="mico">🔗</div><div class="mlbl">จำนวน Joint</div>
+      <div class="mval" style="color:${color}">${rows.length}</div>
+      <div class="munit">joints</div>
+    </div></div></div>
+    <div class="mc a1 fi"><div class="mc-inner"><div class="mc-main">
+      <div class="mico">📐</div><div class="mlbl">ความยาวรวม</div>
+      <div class="mval" style="color:var(--accent)">${FMT(Math.round(totalLen))}</div>
+      <div class="munit">เมตร</div>
+    </div></div></div>
+    <div class="mc a3 fi"><div class="mc-inner"><div class="mc-main">
+      <div class="mico">📏</div><div class="mlbl">ความหนาเฉลี่ย</div>
+      <div class="mval" style="color:${tColor}">${avgThick > 0 ? avgThick.toFixed(1) : '—'}</div>
+      <div class="munit">มิลลิเมตร</div>
+    </div></div></div>
+    <div class="mc a4 fi"><div class="mc-inner"><div class="mc-main">
+      <div class="mico">⚠️</div><div class="mlbl">ความเสียหายรวม</div>
+      <div class="mval" style="color:${totalDmg > 0 ? 'var(--danger)' : 'var(--success)'}">${totalDmg}</div>
+      <div class="munit">จุด</div>
+    </div></div></div>`;
 }
 
 // ══════════════════════════════════════════════
-//  2 · LINE HEALTH CARDS
+//  BELT MAP
 // ══════════════════════════════════════════════
 
-function _renderLineHealth(rows, C, dmgCols) {
-  const lines = [...new Set(rows.map(r => r[C.iLine]).filter(v => v))].sort();
+function renderBeltMap(name, rows, cols) {
+  const dmgCols  = [cols.hole, cols.cut, cols.tear, cols.crack].filter(i => i >= 0);
+  const totalLen = rows.reduce((s, r) => s + num(r[cols.length]), 0);
 
-  const html = lines.map(line => {
-    const lr      = rows.filter(r => r[C.iLine] === line);
-    const thickVals = lr.map(r => num(r[C.iThickAvg])).filter(v => v > 0);
-    const hardVals  = lr.map(r => num(r[C.iHardTopAvg])).filter(v => v > 0);
-    const dmg       = lr.reduce((s, r) => s + dmgCols.reduce((d, col) => d + num(r[col]), 0), 0);
-    const avgThick  = thickVals.length ? thickVals.reduce((a,b) => a+b)/thickVals.length : 0;
-    const avgHard   = hardVals.length  ? hardVals.reduce((a,b)  => a+b)/hardVals.length  : 0;
+  const segs = rows.map(r => {
+    const joint  = r[cols.joint]  || '?';
+    const len    = num(r[cols.length]) || 1;
+    const brand  = r[cols.brand]  || '';
+    const type   = r[cols.type]   || '';
+    const thickL = num(r[cols.thickL]);
+    const thickR = num(r[cols.thickR]);
+    const thick  = thickL > 0 && thickR > 0 ? (thickL + thickR) / 2 : thickL || thickR;
+    const hardT  = num(r[cols.hardTop]);
+    const dmg    = dmgCols.reduce((s, i) => s + num(r[i]), 0);
+    const cond   = r[cols.cond]   || '';
 
-    // Health: 0–100, based on thickness (20mm = worn, 37mm = new)
-    const score = Math.max(0, Math.min(100, (avgThick - 20) / 17 * 100));
-    const color = score >= 65 ? '#2ecc71' : score >= 40 ? '#f1c40f' : '#e74c3c';
-    const label = score >= 65 ? 'GOOD' : score >= 40 ? 'WARNING' : 'CRITICAL';
+    const color  = dmg === 0 ? '#2ecc71' : dmg <= 2 ? '#f1c40f' : dmg <= 5 ? '#f07c1f' : '#e74c3c';
+    const pctLen = totalLen > 0 ? (len / totalLen * 100).toFixed(1) : 0;
+
+    const dmgList = [
+      cols.hole  >= 0 && num(r[cols.hole])  > 0 ? `หลุม: ${num(r[cols.hole])}` : '',
+      cols.cut   >= 0 && num(r[cols.cut])   > 0 ? `รอยบาด: ${num(r[cols.cut])}` : '',
+      cols.tear  >= 0 && num(r[cols.tear])  > 0 ? `รอยฉีก: ${num(r[cols.tear])}` : '',
+      cols.crack >= 0 && num(r[cols.crack]) > 0 ? `รอยแตก: ${num(r[cols.crack])}` : '',
+    ].filter(Boolean).join(' · ') || 'ไม่มีความเสียหาย';
+
+    const tip = `${joint} | ${len} m (${pctLen}%)\n${brand} ${type}\nหนา: ${thick > 0 ? thick.toFixed(1) : '—'} mm | แข็ง: ${hardT > 0 ? hardT.toFixed(1) : '—'} A\n${dmgList}\nสภาพ: ${cond}`;
 
     return `
-      <div class="clc">
-        <div class="clc-head">
-          <span class="clc-name">${line}</span>
-          <span class="clc-badge" style="background:${color}22;color:${color};border-color:${color}55">${label}</span>
-        </div>
-        <div class="clc-bar-wrap"><div class="clc-bar" style="width:${score.toFixed(0)}%;background:${color}"></div></div>
-        <div class="clc-stats">
-          <span>📏 <b>${avgThick > 0 ? avgThick.toFixed(1) : '—'}</b> mm</span>
-          <span>💪 <b>${avgHard  > 0 ? avgHard.toFixed(1)  : '—'}</b> A</span>
-          <span>🔗 <b>${lr.length}</b> joints</span>
-          <span style="color:${dmg > 0 ? '#e74c3c' : '#545968'}">⚠ <b>${dmg}</b> dmg</span>
-        </div>
+      <div class="bmap-seg" style="flex:${len}" title="${tip}">
+        <div class="bmap-fill" style="background:${color}"></div>
+        <div class="bmap-label">${joint}</div>
       </div>`;
   }).join('');
 
-  document.getElementById('condLineHealth').innerHTML = `<div class="clc-grid">${html}</div>`;
+  document.getElementById(`bmap-${name}`).innerHTML = `
+    <div class="bmap-legend">
+      <span><span class="bmap-dot" style="background:#2ecc71"></span>ไม่มีความเสียหาย</span>
+      <span><span class="bmap-dot" style="background:#f1c40f"></span>1–2 จุด</span>
+      <span><span class="bmap-dot" style="background:#f07c1f"></span>3–5 จุด</span>
+      <span><span class="bmap-dot" style="background:#e74c3c"></span>6+ จุด</span>
+    </div>
+    <div class="bmap-wrap">${segs}</div>
+    <div class="bmap-info">ความยาวรวม <b>${FMT(Math.round(totalLen))} ม.</b> · <b>${rows.length} Joints</b> · Hover เพื่อดูรายละเอียด</div>`;
 }
 
 // ══════════════════════════════════════════════
-//  3 · THICKNESS TREND
+//  CHARTS
 // ══════════════════════════════════════════════
 
-function _renderThicknessTrend(rows, C) {
-  killCChart('cThickTrend');
-  const lines  = [...new Set(rows.map(r => r[C.iLine]).filter(v => v))].sort();
-  const dates  = [...new Set(rows.map(r => r[C.iDate]).filter(v => v))].sort();
-  const colors = ['#2ecc71','#3b9ede','#f07c1f','#e74c3c','#9b59b6','#f1c40f','#1abc9c','#e67e22','#00bcd4','#e91e63','#8bc34a','#95a5a6'];
+function renderLineCharts(name, rows, cols, color) {
+  const labels = rows.map(r => r[cols.joint] || '?');
 
-  const datasets = lines.map((line, i) => ({
-    label: line,
-    data: dates.map(d => {
-      const vals = rows.filter(r => r[C.iLine] === line && r[C.iDate] === d)
-                       .map(r => num(r[C.iThickAvg])).filter(v => v > 0);
-      return vals.length ? vals.reduce((a,b) => a+b)/vals.length : null;
-    }),
-    borderColor: colors[i % colors.length],
-    backgroundColor: 'transparent',
-    borderWidth: 2, pointRadius: 3, tension: 0.3, spanGaps: true,
-  }));
-
-  condCharts['cThickTrend'] = new Chart(document.getElementById('cThickTrend'), {
-    type: 'line',
-    data: { labels: dates, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: '#8b90a0', font: { size: 10 }, boxWidth: 10 } },
-        tooltip: { ...TT, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw != null ? ctx.raw.toFixed(1) + ' mm' : '—'}` } },
-      },
-      scales: {
-        x: { ticks: { color: '#545968', font: { size: 9 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,.04)' } },
-        y: {
-          ticks: { color: '#545968', font: { size: 10 }, callback: v => v.toFixed(0) + ' mm' },
-          grid:  { color: 'rgba(255,255,255,.06)' },
-        },
-      },
-    },
-  });
-}
-
-// ══════════════════════════════════════════════
-//  4 · DAMAGE SUMMARY CHART
-// ══════════════════════════════════════════════
-
-function _renderDamageChart(rows, C, dmgCols) {
-  killCChart('cDamage');
-  const lines    = [...new Set(rows.map(r => r[C.iLine]).filter(v => v))].sort();
-  const dmgDefs  = [
-    { label: 'หลุม',    col: C.iHole,  color: '#e74c3c' },
-    { label: 'รอยบาด',  col: C.iCut,   color: '#f07c1f' },
-    { label: 'รอยฉีก',  col: C.iTear,  color: '#f1c40f' },
-    { label: 'รอยแตก',  col: C.iCrack, color: '#9b59b6' },
-    { label: 'ขอบขวา',  col: C.iEdgeR, color: '#3b9ede' },
-    { label: 'ขอบซ้าย', col: C.iEdgeL, color: '#2ecc71' },
-    { label: 'เห็นสลิง',col: C.iSling, color: '#e91e63' },
-    { label: 'ทะลุ',    col: C.iThru,  color: '#ff5722' },
-  ].filter(d => d.col >= 0);
-
-  condCharts['cDamage'] = new Chart(document.getElementById('cDamage'), {
+  // Thickness chart
+  if (condCharts[`cThick-${name}`]) { try { condCharts[`cThick-${name}`].destroy(); } catch(e) {} }
+  condCharts[`cThick-${name}`] = new Chart(document.getElementById(`cThick-${name}`), {
     type: 'bar',
     data: {
-      labels: lines,
-      datasets: dmgDefs.map(d => ({
-        label: d.label,
-        data: lines.map(line => rows.filter(r => r[C.iLine] === line).reduce((s,r) => s + num(r[d.col]), 0)),
-        backgroundColor: d.color + 'bb', borderRadius: 3,
-      })),
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#8b90a0', font: { size: 10 }, boxWidth: 10 } },
-        tooltip: { ...TT },
-      },
-      scales: {
-        x: { stacked: true, ticks: { color: '#545968', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-        y: { stacked: true, ticks: { color: '#545968', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.06)' } },
-      },
-    },
-  });
-}
-
-// ══════════════════════════════════════════════
-//  5 · BRAND COMPARISON
-// ══════════════════════════════════════════════
-
-function _renderBrandChart(rows, C) {
-  killCChart('cBrandComp');
-  const getBrand = r => r[C.iShort] || r[C.iBrand] || '';
-  const brands   = [...new Set(rows.map(getBrand).filter(v => v))].sort();
-
-  const avgOf = (col, brand) => {
-    const vals = rows.filter(r => getBrand(r) === brand).map(r => num(r[col])).filter(v => v > 0);
-    return vals.length ? vals.reduce((a,b) => a+b)/vals.length : 0;
-  };
-
-  condCharts['cBrandComp'] = new Chart(document.getElementById('cBrandComp'), {
-    type: 'bar',
-    data: {
-      labels: brands,
+      labels,
       datasets: [
-        { label: 'ความหนาเฉลี่ย (mm)',      data: brands.map(b => avgOf(C.iThickAvg,   b)), backgroundColor: '#3b9ede99', yAxisID: 'yL', borderRadius: 5 },
-        { label: 'ความแข็งเฉลี่ย (Shore A)', data: brands.map(b => avgOf(C.iHardTopAvg, b)), backgroundColor: '#f07c1f99', yAxisID: 'yR', borderRadius: 5 },
+        { label: 'L.Edge (mm)', data: rows.map(r => num(r[cols.thickL]) || null), backgroundColor: '#3b9edebb', borderRadius: 3 },
+        { label: 'R.Edge (mm)', data: rows.map(r => num(r[cols.thickR]) || null), backgroundColor: '#f07c1fbb', borderRadius: 3 },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { labels: { color: '#8b90a0', font: { size: 10 }, boxWidth: 10 } },
-        tooltip: { ...TT },
+        tooltip: { ...TT, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw != null ? ctx.raw.toFixed(1) + ' mm' : '—'}` } },
       },
       scales: {
-        x:  { ticks: { color: '#545968', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-        yL: { type: 'linear', position: 'left',  ticks: { color: '#3b9ede', font: { size: 10 }, callback: v => v.toFixed(1) + ' mm' }, grid: { color: 'rgba(255,255,255,.06)' } },
-        yR: { type: 'linear', position: 'right', ticks: { color: '#f07c1f', font: { size: 10 }, callback: v => v.toFixed(0) + ' A'  }, grid: { drawOnChartArea: false } },
+        x: { ticks: { color: '#545968', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+        y: { min: 20, ticks: { color: '#545968', font: { size: 10 }, callback: v => v + ' mm' }, grid: { color: 'rgba(255,255,255,.06)' } },
+      },
+    },
+  });
+
+  // Hardness chart
+  if (condCharts[`cHard-${name}`]) { try { condCharts[`cHard-${name}`].destroy(); } catch(e) {} }
+  condCharts[`cHard-${name}`] = new Chart(document.getElementById(`cHard-${name}`), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Top (Shore A)',    data: rows.map(r => num(r[cols.hardTop]) || null), backgroundColor: '#2ecc71bb', borderRadius: 3 },
+        { label: 'Bottom (Shore A)', data: rows.map(r => num(r[cols.hardBot]) || null), backgroundColor: '#9b59b6bb', borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8b90a0', font: { size: 10 }, boxWidth: 10 } },
+        tooltip: { ...TT, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw != null ? ctx.raw.toFixed(1) + ' A' : '—'}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#545968', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+        y: { min: 50, ticks: { color: '#545968', font: { size: 10 }, callback: v => v + ' A' }, grid: { color: 'rgba(255,255,255,.06)' } },
       },
     },
   });
 }
 
 // ══════════════════════════════════════════════
-//  6 · DATA TABLE
+//  TABLE
 // ══════════════════════════════════════════════
 
-function _renderCondTable(rows, C, dmgCols) {
-  const headers = ['วันที่', 'Line', 'Joint', 'Brand', 'SMU', 'หนา (mm)', 'แข็ง Top', 'แข็ง Bot', 'ความเสียหาย', 'Active'];
-  document.getElementById('condThead').innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+function renderLineTable(name, rows, cols) {
+  const headers = ['Joint', 'Mark Date', 'ยาว (m)', 'Brand', 'Type', 'SMU', 'หนา L', 'หนา R', 'แข็ง Top', 'แข็ง Bot', 'หลุม', 'รอยบาด', 'รอยฉีก', 'รอยแตก', 'สภาพ', 'Group'];
+  const idxs    = [cols.joint, cols.mark, cols.length, cols.brand, cols.type, cols.smu, cols.thickL, cols.thickR, cols.hardTop, cols.hardBot, cols.hole, cols.cut, cols.tear, cols.crack, cols.cond, cols.group];
 
-  document.getElementById('condTbody').innerHTML = rows.map(r => {
-    const dmg      = dmgCols.reduce((s, col) => s + num(r[col]), 0);
-    const isActive = String(r[C.iActive]).toUpperCase() === 'TRUE';
-    const thick    = num(r[C.iThickAvg]);
-    const hard     = num(r[C.iHardTopAvg]);
-    const tColor   = thick > 0 ? (thick >= 30 ? '#2ecc71' : thick >= 25 ? '#f1c40f' : '#e74c3c') : '';
-    return `<tr>
-      <td>${r[C.iDate] || '—'}</td>
-      <td>${r[C.iLine]  || '—'}</td>
-      <td>${r[C.iJoint] || '—'}</td>
-      <td>${r[C.iBrand] || '—'}</td>
-      <td class="num">${num(r[C.iSMU]) > 0 ? FMT(r[C.iSMU]) : '—'}</td>
-      <td class="num" style="color:${tColor}">${thick > 0 ? thick.toFixed(1) : '—'}</td>
-      <td class="num">${hard  > 0 ? hard.toFixed(1)  : '—'}</td>
-      <td class="num">${num(r[C.iHardBotAvg]) > 0 ? num(r[C.iHardBotAvg]).toFixed(1) : '—'}</td>
-      <td class="num" style="color:${dmg > 0 ? '#e74c3c' : '#545968'}">${dmg || '—'}</td>
-      <td><span class="badge" style="background:${isActive ? 'rgba(46,204,113,.15)' : 'rgba(255,255,255,.05)'};color:${isActive ? '#2ecc71' : '#545968'};border-color:${isActive ? 'rgba(46,204,113,.3)' : 'rgba(255,255,255,.08)'}">${isActive ? 'Active' : 'Inactive'}</span></td>
-    </tr>`;
+  document.getElementById(`lthead-${name}`).innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+  document.getElementById(`ltbody-${name}`).innerHTML = rows.map(r => {
+    return '<tr>' + idxs.map((idx, ci) => {
+      const raw = idx >= 0 ? r[idx] : '';
+      const v   = raw || '—';
+      const nv  = num(raw);
+
+      // Condition badge
+      if (ci === 14) {
+        const ok = String(v).toLowerCase().includes('normal');
+        return `<td><span class="badge" style="background:${ok?'rgba(46,204,113,.15)':'rgba(231,76,60,.12)'};color:${ok?'#2ecc71':'#e74c3c'};border-color:${ok?'rgba(46,204,113,.3)':'rgba(231,76,60,.3)'}">${v}</span></td>`;
+      }
+      // Thickness — color by value
+      if (ci === 6 || ci === 7) {
+        const c = nv >= 32 ? '#2ecc71' : nv >= 28 ? '#f1c40f' : nv > 0 ? '#e74c3c' : 'inherit';
+        return `<td class="num" style="color:${c}">${nv > 0 ? nv.toFixed(1) : '—'}</td>`;
+      }
+      // Hardness
+      if (ci === 8 || ci === 9) return `<td class="num">${nv > 0 ? nv.toFixed(1) : '—'}</td>`;
+      // SMU
+      if (ci === 5) return `<td class="num">${nv > 0 ? FMT(raw) : '—'}</td>`;
+      // Length
+      if (ci === 2) return `<td class="num">${nv > 0 ? nv.toFixed(1) : '—'}</td>`;
+      // Damage columns
+      if (ci >= 10 && ci <= 13) {
+        return `<td class="num" style="color:${nv > 0 ? '#e74c3c' : '#545968'}">${nv > 0 ? nv : '—'}</td>`;
+      }
+      return `<td>${v}</td>`;
+    }).join('') + '</tr>';
   }).join('');
 }
 
 // ══════════════════════════════════════════════
-//  TAB SWITCHING
+//  TAB SWITCHING (main procurement / condition)
 // ══════════════════════════════════════════════
 
 function switchTab(tab) {

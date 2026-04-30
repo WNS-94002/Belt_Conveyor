@@ -339,70 +339,10 @@
     </div>
 
     <div id="condMain" style="display:none">
-
-      <!-- SECTION 1: Overview cards -->
-      <div class="section-label">ภาพรวมสภาพสายพาน (Active Joints)</div>
-      <div class="mgrid4" id="condCards"></div>
-
-      <!-- SECTION 2: Line Health -->
-      <div class="section-label">สุขภาพสายพานแต่ละ Line</div>
-      <div id="condLineHealth"></div>
-
-      <!-- SECTION 3: Thickness Trend + Damage -->
-      <div class="section-label">แนวโน้มความหนา & สรุปความเสียหาย</div>
-      <div class="row2">
-        <div class="panel">
-          <div class="ph">
-            <div class="ph-left">
-              <div class="ptitle">ความหนาเฉลี่ยตามเวลา</div>
-              <div class="psub">แยกตาม Line · เส้น = แต่ละรอบตรวจ</div>
-            </div>
-            <div class="pbadge">LINE CHART</div>
-          </div>
-          <div style="position:relative;height:300px;">
-            <canvas id="cThickTrend"></canvas>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="ph">
-            <div class="ph-left">
-              <div class="ptitle">ความเสียหายสะสม</div>
-              <div class="psub">แยกประเภท · แต่ละ Line</div>
-            </div>
-            <div class="pbadge">STACKED BAR</div>
-          </div>
-          <div style="position:relative;height:300px;">
-            <canvas id="cDamage"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTION 4: Brand Comparison -->
-      <div class="section-label">เปรียบเทียบยี่ห้อสายพาน</div>
-      <div class="panel">
-        <div class="ph">
-          <div class="ph-left">
-            <div class="ptitle">ความหนา & ความแข็งเฉลี่ย แยกตามยี่ห้อ</div>
-            <div class="psub">แท่งน้ำเงิน = ความหนา (mm) · แท่งส้ม = ความแข็ง (Shore A)</div>
-          </div>
-          <div class="pbadge">BAR CHART</div>
-        </div>
-        <div style="position:relative;height:260px;">
-          <canvas id="cBrandComp"></canvas>
-        </div>
-      </div>
-
-      <!-- SECTION 5: Data table -->
-      <div class="section-label">ข้อมูลการตรวจวัดทั้งหมด</div>
-      <div class="twrap">
-        <div class="tscroll">
-          <table>
-            <thead><tr id="condThead"></tr></thead>
-            <tbody id="condTbody"></tbody>
-          </table>
-        </div>
-      </div>
-
+      <!-- Line sub-tabs — injected by condition.js -->
+      <div class="line-tabs" id="lineTabs"></div>
+      <!-- Per-line content — injected by condition.js -->
+      <div id="lineContent"></div>
     </div><!-- /condMain -->
   </div><!-- /tabCond -->
 

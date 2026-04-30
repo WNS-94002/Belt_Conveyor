@@ -440,12 +440,12 @@ a.lpdf:hover { opacity: 1; }
   flex-shrink: 0;
 }
 
-/* ── BELT MAP ── */
+/* ── BELT MAP (SVG schematic) ── */
 .bmap-legend {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 .bmap-legend span {
   display: flex;
@@ -461,47 +461,19 @@ a.lpdf:hover { opacity: 1; }
   border-radius: 2px;
   flex-shrink: 0;
 }
-.bmap-wrap {
-  display: flex;
-  width: 100%;
-  height: 52px;
-  border-radius: 8px;
-  overflow: hidden;
-  gap: 2px;
-  margin-bottom: 8px;
-}
-.bmap-seg {
-  display: flex;
-  flex-direction: column;
-  min-width: 28px;
-  cursor: pointer;
-  position: relative;
-}
-.bmap-seg:hover .bmap-fill { opacity: 1; filter: brightness(1.2); }
-.bmap-fill {
-  flex: 1;
-  border-radius: 3px;
-  opacity: .85;
-  transition: all .15s;
-}
-.bmap-label {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-3);
-  text-align: center;
-  margin-top: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  letter-spacing: .3px;
-}
-.bmap-info {
-  font-size: 11px;
-  color: var(--text-3);
+.bmap-tip {
+  margin-top: 10px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-1);
   font-family: 'Sarabun', sans-serif;
-  margin-top: 4px;
+  line-height: 1.7;
+  min-height: 44px;
 }
-.bmap-info b { color: var(--text-2); }
 
 /* ── LOGOUT BUTTON ── */
 .logout-btn {

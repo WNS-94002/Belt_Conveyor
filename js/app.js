@@ -154,7 +154,11 @@ function parseGViz(data) {
   const cols = data.table.cols.map(c => c.label || '');
   const rows = data.table.rows.map(r =>
     r.c.map((cell, i) => {
-      if (!cell || cell.v === null || cell.v === undefined) return '';
+      if (!cell) return '';
+      if (cell.v === null || cell.v === undefined) {
+        // Fallback: use formatted string for text-formatted numbers (e.g. "18,682.98")
+        return (cell.f != null) ? String(cell.f) : '';
+      }
       if (data.table.cols[i].type === 'date' && cell.v) {
         const m = String(cell.v).match(/Date\((\d+),/);
         return m ? String(parseInt(m[1])) : '';

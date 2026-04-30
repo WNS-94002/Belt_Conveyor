@@ -4,13 +4,13 @@
  */
 
 const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
-// startRow = sheet row number where header begins (for sheets with title/map rows above)
-// hdrs     = number of header rows GViz should merge (1 = normal, 2 = main+sub header)
+// startRow = sheet row where headers begin; endRow = last data row (inclusive)
+// hdrs     = GViz header rows to merge (1 = normal, 2 = main+sub header rows)
 const LINES = [
-  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAt: null, startRow: null, hdrs: 1 },
-  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAt: null, startRow: null, hdrs: 1 },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAt: 12,   startRow: 14,   hdrs: 2 },
-  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAt: null, startRow: null, hdrs: 1 },
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAt: 12,   startRow: 14,   endRow: 32,   hdrs: 2 },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
 ];
 
 // SMU Belt → belt age color (green / yellow / red / dark)
@@ -81,8 +81,9 @@ function fetchLine(line) {
     const cbName = `_gviz_${line.name}_${Date.now()}`;
     const s = document.createElement('script');
     // For sheets with title rows, specify range and multi-row headers
+    const rangeEnd  = line.endRow || (line.startRow ? line.startRow + 50 : null);
     const rangeParam = line.startRow
-      ? `&range=A${line.startRow}:Z${line.startRow + 60}&headers=${line.hdrs || 1}`
+      ? `&range=A${line.startRow}:Z${rangeEnd}&headers=${line.hdrs || 1}`
       : '';
     s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}${rangeParam}&tqx=out:json&callback=${cbName}`;
     let done = false;
@@ -98,7 +99,8 @@ function fetchLine(line) {
 
 async function fetchLineFallback(line) {
   // CSV export: specify range when sheet has title rows above the data header
-  const rangeParam = line.startRow ? `&range=A${line.startRow}:Z${line.startRow + 60}` : '';
+  const rangeEnd   = line.endRow || (line.startRow ? line.startRow + 50 : null);
+  const rangeParam = line.startRow ? `&range=A${line.startRow}:Z${rangeEnd}` : '';
   const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}${rangeParam}`;
   const res  = await fetch(url, { mode: 'cors' });
   const text = await res.text();
@@ -130,11 +132,14 @@ async function loadCondData() {
     if (r.status === 'fulfilled' && r.value?.rows?.length) {
       const hdr  = r.value.cols;
       const cols = detectCols(hdr);
-      // Filter out sub-header rows and empty rows (keep only rows with a positive length value)
+      // Filter out sub-header, empty, and summary (Total) rows
       const rows = r.value.rows.filter(row => {
-        if (cols.length >= 0) return num(row[cols.length]) > 0;
-        // Fallback: keep row if any numeric cell exists
-        return row.some(cell => num(cell) > 0);
+        if (cols.length >= 0 && num(row[cols.length]) <= 0) return false;
+        if (cols.joint >= 0) {
+          const jv = String(row[cols.joint] || '').toLowerCase();
+          if (jv.includes('total') || jv.includes('รวม') || jv.includes('sum')) return false;
+        }
+        return true;
       });
       lineData[line.name] = { hdr, cols, rows };
       loaded++;
@@ -323,19 +328,19 @@ function _buildSegData(rows, cols) {
   });
 }
 
-// Render one belt track as SVG elements (no rail lines, added separately)
+// Render one belt track as SVG elements — EQUAL-WIDTH cells regardless of actual length
 // labsAbove=true → even labels above track, odd below; false → all labels below
 function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
-  const tot = segs.reduce((s, seg) => s + seg.len, 0);
-  if (!tot) return '';
-  let out = '', cum = 0;
-  segs.forEach((s, i) => {
-    const x1 = x0 + (cum / tot) * pw;
-    cum += s.len;
-    const x2 = x0 + (cum / tot) * pw;
-    const sw = Math.max(1, x2 - x1), mx = (x1 + x2) / 2;
+  if (!segs.length) return '';
+  const segW = pw / segs.length;   // equal width per cell
+  let out = '';
 
-    // Segment fill
+  segs.forEach((s, i) => {
+    const x1 = x0 + i * segW;
+    const x2 = x1 + segW;
+    const mx = (x1 + x2) / 2;
+
+    // Tooltip data
     const tipData = [
       `${s.joint}  |  ${s.len} m`,
       `${s.brand} ${s.type}`.trim() || null,
@@ -344,41 +349,44 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
       s.dmgList,
       `สภาพ: ${s.cond || '—'}`,
     ].filter(Boolean).join('||');
+
+    // Segment fill (SMU color)
     out += `<rect class="bseg" x="${x1.toFixed(1)}" y="${ty}"
-                width="${sw.toFixed(1)}" height="${th}"
-                fill="${s.color}" fill-opacity="0.88"
+                width="${(segW - 1).toFixed(1)}" height="${th}"
+                fill="${s.color}" fill-opacity="0.9"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Damage marker triangle (red) above/below segment
+    // Damage marker triangle
     if (s.dmg > 0) {
-      const dy = labsAbove ? ty - 1 : ty + th + 1;
+      const dy  = labsAbove ? ty - 1 : ty + th + 1;
       const dir = labsAbove ? -1 : 1;
-      out += `<polygon points="${mx},${dy} ${mx - 5},${dy + dir * 9} ${mx + 5},${dy + dir * 9}"
+      out += `<polygon points="${mx},${dy} ${mx-5},${dy+dir*9} ${mx+5},${dy+dir*9}"
                 fill="#e74c3c" opacity="0.9"><title>ความเสียหาย: ${s.dmg} จุด</title></polygon>`;
     }
 
-    // Tick mark at joint start
-    out += `<line x1="${x1.toFixed(1)}" y1="${ty - 4}" x2="${x1.toFixed(1)}" y2="${ty + th + 4}"
-                  stroke="#55596a" stroke-width="1" stroke-dasharray="2,2"/>`;
+    // Separator line between cells
+    out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
+                  stroke="rgba(0,0,0,0.35)" stroke-width="1"/>`;
 
-    // Length label inside segment (if wide enough)
-    if (sw > 26 && s.len > 0) {
+    // Length label inside cell
+    if (segW > 28 && s.len > 0) {
       out += `<text x="${mx.toFixed(1)}" y="${(ty + th / 2 + 3.5).toFixed(1)}"
                     text-anchor="middle" font-size="7.5"
                     fill="rgba(0,0,0,0.85)" font-family="Arial,sans-serif"
                     font-weight="bold">${s.len}m</text>`;
     }
 
-    // Joint label alternating above/below (all below when !labsAbove)
+    // Joint label (alternating above/below for carry, all below for return)
     const lAbove = labsAbove ? (i % 2 === 0) : false;
     const lY = lAbove ? ty - 14 : ty + th + 16;
-    out += `<text x="${x1.toFixed(1)}" y="${lY}" text-anchor="middle"
+    out += `<text x="${mx.toFixed(1)}" y="${lY}" text-anchor="middle"
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
 
-  // End tick mark
-  out += `<line x1="${(x0 + pw).toFixed(1)}" y1="${ty - 4}" x2="${(x0 + pw).toFixed(1)}" y2="${ty + th + 4}"
-                stroke="#55596a" stroke-width="1" stroke-dasharray="2,2"/>`;
+  // End separator
+  const endX = (x0 + pw).toFixed(1);
+  out += `<line x1="${endX}" y1="${ty}" x2="${endX}" y2="${ty + th}"
+                stroke="rgba(0,0,0,0.35)" stroke-width="1"/>`;
   return out;
 }
 
@@ -474,14 +482,8 @@ function renderBeltMap(name, rows, cols) {
                  stroke="#3b9ede" stroke-width="1.5" stroke-opacity="0.45"
                  marker-end="url(#aL_${name})"/>`;
 
-    // Track side labels
-    el += `<text x="${PL + 4}" y="${TOP_Y - 28}" font-size="9" fill="#8b90a0" font-family="Arial,sans-serif">▶ Carry Side  (HEAD → TAIL)</text>`;
-    el += `<text x="${PL + 4}" y="${BOT_Y + TH + 32}" font-size="9" fill="#8b90a0" font-family="Arial,sans-serif">◀ Return Side  (TAIL → HEAD)</text>`;
-
-    // Summary
-    el += `<text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#8b90a0" font-family="Arial,sans-serif">
-      ความยาวรวม ${FMT(Math.round(topTotal + botTotal))} ม. · Carry ${FMT(Math.round(topTotal))} ม. · Return ${FMT(Math.round(botTotal))} ม. · ${rows.length} Joints
-    </text>`;
+    // Summary (total only — no carry/return breakdown)
+    el += `<text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#8b90a0" font-family="Arial,sans-serif">ความยาวรวม ${FMT(Math.round(topTotal + botTotal))} ม. · ${rows.length} Joints</text>`;
 
     svgContent = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg"
                        style="display:block;overflow:visible">

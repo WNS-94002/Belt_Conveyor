@@ -11,6 +11,13 @@ const LINES = [
   { name: 'S2A', gid: '636893050',  color: '#3b9ede', topCapacity: 10 },
   { name: 'S2B', gid: '293227926',  color: '#f07c1f', topCapacity: 10 },
   { name: 'S2C', gid: '298583837',  color: '#9b59b6', topCapacity: 10 },
+  { name: 'S3',  gid: '78760152',   color: '#00b894', topCapacity: 10 },
+  { name: 'S5',  gid: '1911169103', color: '#55efc4', topCapacity: 10 },
+  { name: 'C1',  gid: '815404941',  color: '#fdcb6e', topCapacity: 10 },
+  { name: 'C2',  gid: '907762015',  color: '#e17055', topCapacity: 10 },
+  { name: 'B1',  gid: '579418526',  color: '#a29bfe', topCapacity: 10 },
+  { name: 'B2',  gid: '739894414',  color: '#fd79a8', topCapacity: 10 },
+  { name: 'B3',  gid: '1167934540', color: '#74b9ff', topCapacity: 10 },
 ];
 
 // SMU Belt → card color (green / yellow / red / dark)

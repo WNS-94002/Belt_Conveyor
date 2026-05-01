@@ -136,6 +136,28 @@ function _findHeaderRow(cols, rows) {
 }
 
 // ══════════════════════════════════════════════
+//  CACHE (localStorage, TTL = 5 นาที)
+// ══════════════════════════════════════════════
+
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getCached(line) {
+  try {
+    const raw = localStorage.getItem(`belt_${line.gid}`);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+}
+
+function setCache(line, data) {
+  try {
+    localStorage.setItem(`belt_${line.gid}`, JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+// ══════════════════════════════════════════════
 //  DATA FETCHING
 // ══════════════════════════════════════════════
 
@@ -163,6 +185,52 @@ async function fetchLineFallback(line) {
   return null;
 }
 
+async function fetchLineWithCache(line) {
+  const cached = getCached(line);
+  if (cached) return cached;
+  const data = await fetchLine(line);
+  setCache(line, data);
+  return data;
+}
+
+// ══════════════════════════════════════════════
+//  PROCESS ONE LINE (parse + store + render)
+// ══════════════════════════════════════════════
+
+function processLineData(line, raw) {
+  if (!raw?.rows?.length) {
+    lineData[line.name] = { hdr: [], cols: {}, rows: [] };
+    return false;
+  }
+  const { hdr, dataRows } = _findHeaderRow(raw.cols, raw.rows);
+  const cols = detectCols(hdr);
+  const rows = dataRows.filter(row => {
+    if (cols.length >= 0 && num(row[cols.length]) <= 0) return false;
+    if (cols.joint >= 0) {
+      const jv = String(row[cols.joint] || '').toLowerCase();
+      if (jv.includes('total') || jv.includes('รวม') || jv.includes('sum')) return false;
+    }
+    return true;
+  });
+  lineData[line.name] = { hdr, cols, rows };
+  // Render immediately if this is the active tab
+  if (line.name === activeLinetab && !renderedLines.has(line.name)) {
+    renderOneLine(line.name);
+  }
+  return rows.length > 0;
+}
+
+function renderOneLine(name) {
+  const line = LINES.find(l => l.name === name);
+  const { cols, rows } = lineData[name];
+  if (!rows.length || renderedLines.has(name)) return;
+  renderLineCards(name, rows, cols, line.color);
+  renderBeltMap(name, rows, cols);
+  renderLineCharts(name, rows, cols, line.color);
+  renderLineTable(name, rows, cols);
+  renderedLines.add(name);
+}
+
 async function loadCondData() {
   const el = id => document.getElementById(id);
   el('condLoading').style.display = 'flex';
@@ -171,40 +239,39 @@ async function loadCondData() {
   el('condDot').className         = 'sdot';
   el('condTxt').textContent       = 'กำลังโหลดข้อมูล Belt Map...';
 
-  const results = await Promise.allSettled(LINES.map(fetchLine));
+  // ── สร้าง shell (tabs + panes) ก่อนรอข้อมูล ──
+  renderConditionShell();
 
-  // Fallback to CSV for failed lines
-  for (let i = 0; i < LINES.length; i++) {
-    if (results[i].status === 'rejected') {
-      try { results[i] = { status: 'fulfilled', value: await fetchLineFallback(LINES[i]) }; }
-      catch(e) { results[i] = { status: 'rejected', reason: e }; }
+  let firstLoaded = false;
+  let loadedCount = 0;
+
+  const handleLine = async (line) => {
+    let raw = null;
+    try {
+      raw = await fetchLineWithCache(line);
+    } catch {
+      try { raw = await fetchLineFallback(line); } catch {}
     }
-  }
+    const ok = processLineData(line, raw);
+    if (ok) loadedCount++;
 
-  let loaded = 0;
-  results.forEach((r, i) => {
-    const line = LINES[i];
-    if (r.status === 'fulfilled' && r.value?.rows?.length) {
-      // Auto-detect which row is the real column header (skips title/decoration rows)
-      const { hdr, dataRows } = _findHeaderRow(r.value.cols, r.value.rows);
-      const cols = detectCols(hdr);
-      // Filter out sub-header rows, empty-length rows, and summary rows
-      const rows = dataRows.filter(row => {
-        if (cols.length >= 0 && num(row[cols.length]) <= 0) return false;
-        if (cols.joint >= 0) {
-          const jv = String(row[cols.joint] || '').toLowerCase();
-          if (jv.includes('total') || jv.includes('รวม') || jv.includes('sum')) return false;
-        }
-        return true;
-      });
-      lineData[line.name] = { hdr, cols, rows };
-      loaded++;
-    } else {
-      lineData[line.name] = { hdr: [], cols: {}, rows: [] };
+    // ── แสดง UI ทันทีที่ line แรกโหลดสำเร็จ ──
+    if (ok && !firstLoaded) {
+      firstLoaded = true;
+      condLoaded = true;
+      el('condLoading').style.display = 'none';
+      el('condMain').style.display    = 'block';
+      el('condDot').classList.add('live');
+      switchLinetab(activeLinetab);
     }
-  });
+    el('condTxt').textContent = firstLoaded
+      ? `Connected · โหลดแล้ว ${loadedCount}/${LINES.length} lines`
+      : 'กำลังโหลดข้อมูล Belt Map...';
+  };
 
-  if (loaded === 0) {
+  await Promise.allSettled(LINES.map(handleLine));
+
+  if (loadedCount === 0) {
     el('condLoading').style.display = 'none';
     el('condErr').style.display     = 'block';
     el('condErrMsg').textContent    = 'ไม่สามารถโหลดข้อมูลได้ — ตรวจสอบว่า Sheet เป็น Public';
@@ -213,37 +280,24 @@ async function loadCondData() {
     return;
   }
 
-  condLoaded = true;
-  el('condLoading').style.display = 'none';
-  el('condMain').style.display    = 'block';
-  el('condDot').classList.add('live');
   el('condTxt').textContent = `Connected · Belt Map: ${LINES.map(l => l.name).join(', ')}`;
-
-  renderCondition();
 }
 
 // ══════════════════════════════════════════════
-//  MAIN RENDER
+//  SHELL RENDER (tabs + panes HTML, ไม่มีข้อมูล)
 // ══════════════════════════════════════════════
 
-function renderCondition() {
-  // Line sub-tabs
+function renderConditionShell() {
   document.getElementById('lineTabs').innerHTML = LINES.map(l => `
     <button class="line-tab-btn" id="ltab-${l.name}" onclick="switchLinetab('${l.name}')">
       <span class="ltab-dot" style="background:${l.color}"></span>${l.name}
     </button>`).join('');
 
-  // Content panes per line
   document.getElementById('lineContent').innerHTML = LINES.map(l => `
     <div id="lcontent-${l.name}" style="display:none">
-      <!-- Cards -->
       <div class="mgrid4" id="lcards-${l.name}"></div>
-
-      <!-- Belt Map -->
       <div class="section-label">Belt Map · สัดส่วนความยาวและสภาพ Joint</div>
       <div class="panel" id="bmap-${l.name}" style="padding:18px 20px;"></div>
-
-      <!-- Charts -->
       <div class="section-label">ความหนา & ความแข็ง รายละเอียดแต่ละ Joint</div>
       <div class="row2">
         <div class="panel">
@@ -267,8 +321,6 @@ function renderCondition() {
           <div style="position:relative;height:250px"><canvas id="cHard-${l.name}"></canvas></div>
         </div>
       </div>
-
-      <!-- Table -->
       <div class="section-label">รายละเอียดแต่ละ Joint</div>
       <div class="twrap"><div class="tscroll">
         <table>
@@ -277,8 +329,6 @@ function renderCondition() {
         </table>
       </div></div>
     </div>`).join('');
-
-  switchLinetab(activeLinetab);
 }
 
 // ══════════════════════════════════════════════
@@ -287,8 +337,6 @@ function renderCondition() {
 
 function switchLinetab(name) {
   activeLinetab = name;
-  const line = LINES.find(l => l.name === name);
-
   LINES.forEach(l => {
     const btn  = document.getElementById(`ltab-${l.name}`);
     const pane = document.getElementById(`lcontent-${l.name}`);
@@ -300,15 +348,8 @@ function switchLinetab(name) {
     }
     if (pane) pane.style.display = active ? '' : 'none';
   });
-
-  if (!renderedLines.has(name) && lineData[name]?.rows.length) {
-    const { cols, rows } = lineData[name];
-    renderLineCards(name, rows, cols, line.color);
-    renderBeltMap(name, rows, cols);
-    renderLineCharts(name, rows, cols, line.color);
-    renderLineTable(name, rows, cols);
-    renderedLines.add(name);
-  }
+  // Render ถ้ายังไม่เคย render และมีข้อมูลแล้ว
+  if (lineData[name]?.rows.length) renderOneLine(name);
 }
 
 // ══════════════════════════════════════════════

@@ -356,10 +356,9 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
   const slots  = capacity || segs.length;
   if (!slots) return '';
   const segW   = pw / slots;
-  const cardH  = Math.round(th * 0.40);          // thinner card (was 0.58)
+  const cardH  = Math.round(th * 0.75);   // card fills most of track height
   const cardY  = ty + Math.round((th - cardH) / 2);
-  const PAD    = 6;                               // wider margin = narrower card
-  const extraH = 20;                              // extension for pulley-adjacent cards
+  const PAD    = 5;
 
   const offset  = (rightAlign && capacity) ? capacity - segs.length : 0;
   const slotArr = Array(slots).fill(null);
@@ -380,22 +379,9 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
       return;
     }
 
-    // Pulley-adjacent slots (first / last) get taller cards that extend beyond the track
-    // so the length value is readable even when the pulley overlaps the segment
+    // Pulley-adjacent slots get a visible stroke border so the card edge is clear
+    // even when the pulley partially overlaps the segment
     const isPulley = slotIdx === 0 || slotIdx === slots - 1;
-    let thisCH, thisCY;
-    if (isPulley && labsAbove) {
-      // Carry: extend card ABOVE the track (above where pulley tip starts)
-      thisCY = ty - extraH;
-      thisCH = cardH + extraH;
-    } else if (isPulley && !labsAbove) {
-      // Return: extend card BELOW the track (below where pulley tip ends)
-      thisCY = ty + th - cardH;   // bottom-aligned in track
-      thisCH = cardH + extraH;
-    } else {
-      thisCY = cardY;
-      thisCH = cardH;
-    }
 
     const cW = Math.max(segW - PAD * 2 - 1, 2);
     const cX = x1 + PAD;
@@ -414,19 +400,17 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
                 fill="${s.trackColor}" fill-opacity="0.28"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // SMU card (may extend beyond track for pulley slots)
-    out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${thisCY}" width="${cW.toFixed(1)}" height="${thisCH}"
-                fill="${s.cardColor}" fill-opacity="0.88" rx="3"
+    // SMU card — pulley slots get a white border so they're visible behind the pulley
+    const strokeAttr = isPulley
+      ? `stroke="rgba(255,255,255,0.7)" stroke-width="2"`
+      : '';
+    out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${cardY}" width="${cW.toFixed(1)}" height="${cardH}"
+                fill="${s.cardColor}" fill-opacity="0.9" rx="3" ${strokeAttr}
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Length text — placed in the extended (visible) portion for pulley slots
+    // Length text centered in card
     if (segW > 24 && s.len > 0) {
-      const textY = isPulley && labsAbove
-        ? (thisCY + extraH / 2 + 4).toFixed(1)       // upper extension area (above track)
-        : isPulley && !labsAbove
-          ? (thisCY + cardH + extraH / 2 + 4).toFixed(1) // lower extension area (below track)
-          : (thisCY + thisCH / 2 + 4).toFixed(1);        // normal: centered in card
-      out += `<text x="${mx.toFixed(1)}" y="${textY}"
+      out += `<text x="${mx.toFixed(1)}" y="${(cardY + cardH / 2 + 4).toFixed(1)}"
                   text-anchor="middle" font-size="8" fill="rgba(0,0,0,0.85)"
                   font-family="Arial,sans-serif" font-weight="bold">${s.len}m</text>`;
     }
@@ -443,10 +427,8 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
     out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
                   stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
-    // Joint label — shift out when card extends beyond track
-    const lY = labsAbove
-      ? (isPulley ? thisCY - 10 : ty - 8)
-      : (isPulley ? thisCY + thisCH + 12 : ty + th + 14);
+    // Joint label
+    const lY = labsAbove ? ty - 8 : ty + th + 14;
     out += `<text x="${mx.toFixed(1)}" y="${lY}" text-anchor="middle"
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
@@ -495,11 +477,11 @@ function renderBeltMap(name, rows, cols) {
 
   if (isTwoTrack) {
     // ══ TWO-TRACK LOOP MAP (S2B style) ═══════════════════════════
-    const W = 940, H = 305;
-    const PL = 82, PR = 82, PW = W - PL - PR;
-    const TH = 44;
-    const TOP_Y = 82;           // carry track — extra top margin for extended cards
-    const BOT_Y = 200;          // return track — extra bottom margin for extended cards
+    const W = 940, H = 235;
+    const PL = 70, PR = 70, PW = W - PL - PR;  // smaller margins → pulleys further out
+    const TH = 26;              // track height close to card height (rail lines tight)
+    const TOP_Y = 75;           // carry track top
+    const BOT_Y = 165;          // return track top (moved up → rounder pulley)
 
     const cap = line.topCapacity;   // slots per track (e.g. 10)
 
@@ -528,10 +510,12 @@ function renderBeltMap(name, rows, cols) {
       el += `<line x1="${PL}" y1="${ty + th}" x2="${PL + PW}" y2="${ty + th}" stroke="#6b7080" stroke-width="1.8"/>`;
     });
 
-    // HEAD / TAIL pulleys — rounder oval (pRX enlarged toward circular)
+    // HEAD / TAIL pulleys
+    // pRY = half the vertical span (carry-top → return-bottom)
+    // pRX = 55 → ratio pRY/pRX ≈ 1.05:1 (near-circle)
     const pCY = (TOP_Y + BOT_Y + TH) / 2;
-    const pRY = (BOT_Y + TH - TOP_Y) / 2;   // spans carry-top → return-bottom exactly
-    const pRX = 55;                            // ratio pRY/pRX ≈ 1.5:1 (visually round)
+    const pRY = (BOT_Y + TH - TOP_Y) / 2;
+    const pRX = 55;
     [{ cx: PL, lbl: 'HEAD' }, { cx: PL + PW, lbl: 'TAIL' }].forEach(p => {
       el += `<ellipse cx="${p.cx}" cy="${pCY}" rx="${pRX}" ry="${pRY}"
                       fill="#181c27" stroke="#8b90a0" stroke-width="2.5"/>`;

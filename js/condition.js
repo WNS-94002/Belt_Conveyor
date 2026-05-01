@@ -222,24 +222,25 @@ function processLineData(line, raw) {
   return rows.length > 0;
 }
 
-// Worst condition across all joints: Alarm > Monitor > Normal
-function _worstCondColor(rows, cols) {
-  if (!rows.length || cols.cond < 0) return null;
-  let alarm = false, monitor = false, normal = false;
+// Worst SMU Belt across all joints: >35k=red > 15k-35k=yellow > ≤15k=green
+function _worstSmuColor(rows, cols) {
+  if (!rows.length || cols.smu < 0) return null;
+  let hasRed = false, hasYellow = false, hasGreen = false;
   for (const r of rows) {
-    const c = String(r[cols.cond] || '').trim().toLowerCase();
-    if (c.includes('alarm') || c === 'critical') alarm = true;
-    else if (c === 'monitor') monitor = true;
-    else if (c === 'normal') normal = true;
+    const s = num(r[cols.smu]);
+    if (s <= 0) continue;
+    if (s > 35000)      hasRed    = true;
+    else if (s > 15000) hasYellow = true;
+    else                hasGreen  = true;
   }
-  if (alarm)   return '#e74c3c';
-  if (monitor) return '#f39c12';
-  if (normal)  return '#2ecc71';
+  if (hasRed)    return '#e74c3c';
+  if (hasYellow) return '#f39c12';
+  if (hasGreen)  return '#2ecc71';
   return null;
 }
 
 function _updateTabDot(name, rows, cols) {
-  const color = _worstCondColor(rows, cols);
+  const color = _worstSmuColor(rows, cols);
   if (!color) return;
   const dot = document.getElementById(`ltab-dot-${name}`);
   if (dot) dot.style.background = color;

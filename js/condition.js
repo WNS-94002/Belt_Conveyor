@@ -7,10 +7,10 @@ const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
 // topCapacity: max joints shown on carry (top) track; remaining joints go to return (bottom)
 // — null = single-track linear layout
 const LINES = [
-  { name: 'S1',  gid: '2113959175', color: '#2ecc71', topCapacity: null },
-  { name: 'S2A', gid: '636893050',  color: '#3b9ede', topCapacity: null },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', topCapacity: 10   },
-  { name: 'S2C', gid: '298583837',  color: '#9b59b6', topCapacity: null },
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71', topCapacity: 10 },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede', topCapacity: 10 },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', topCapacity: 10 },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6', topCapacity: 10 },
 ];
 
 // SMU Belt → card color (green / yellow / red / dark)

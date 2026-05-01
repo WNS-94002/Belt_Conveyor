@@ -9,16 +9,25 @@ const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
 const LINES = [
   { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAfterJoint: null },
   { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAfterJoint: null },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAfterJoint: 'J18' },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAfterJoint: 'J16' },
   { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAfterJoint: null },
 ];
 
-// SMU Belt → belt age color (green / yellow / red / dark)
+// SMU Belt → card color (green / yellow / red / dark)
 function smuColor(smu) {
   if (!smu || smu <= 0) return '#141414';
   if (smu <= 15000)     return '#27ae60';
   if (smu <= 35000)     return '#f39c12';
   return '#c0392b';
+}
+
+// Joint Condition → track background color
+function condColor(cond) {
+  const c = String(cond || '').trim().toLowerCase();
+  if (c === 'normal')                          return '#27ae60';
+  if (c === 'monitor')                         return '#f39c12';
+  if (c.includes('alarm') || c === 'critical') return '#c0392b';
+  return '#3a3f52';
 }
 
 let lineData      = {};      // { S1: {hdr, rows}, S2A: ..., ... }
@@ -325,69 +334,78 @@ function _buildSegData(rows, cols) {
     const hardT  = num(r[cols.hardTop]);
     const smu    = num(r[cols.smu]);
     const dmg    = dmgCols.reduce((s, i) => s + num(r[i]), 0);
-    const cond   = r[cols.cond]   || '';
-    const color  = smuColor(smu);
+    const cond       = r[cols.cond] || '';
+    const trackColor = condColor(cond);  // track bg = Condition (Column BL)
+    const cardColor  = smuColor(smu);   // card fill = SMU Belt (Column AC)
     const dmgList = [
       cols.hole  >= 0 && num(r[cols.hole])  > 0 ? `หลุม ${num(r[cols.hole])}` : '',
       cols.cut   >= 0 && num(r[cols.cut])   > 0 ? `รอยบาด ${num(r[cols.cut])}` : '',
       cols.tear  >= 0 && num(r[cols.tear])  > 0 ? `รอยฉีก ${num(r[cols.tear])}` : '',
       cols.crack >= 0 && num(r[cols.crack]) > 0 ? `รอยแตก ${num(r[cols.crack])}` : '',
     ].filter(Boolean).join(' · ') || 'ไม่มีความเสียหาย';
-    return { joint, len, brand, type, thick, hardT, smu, dmg, cond, color, dmgList };
+    return { joint, len, brand, type, thick, hardT, smu, dmg, cond, trackColor, cardColor, dmgList };
   });
 }
 
 // Render one belt track as SVG elements — EQUAL-WIDTH cells regardless of actual length
-// labsAbove=true → even labels above track, odd below; false → all labels below
+// Track background = Condition color (Column BL)
+// Card inside = SMU Belt color (Column AC) with length value
+// labsAbove=true → joint labels above track; false → below
 function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
   if (!segs.length) return '';
-  const segW = pw / segs.length;   // equal width per cell
+  const segW  = pw / segs.length;
+  const cardH = Math.round(th * 0.58);
+  const cardY = ty + Math.round((th - cardH) / 2);
+  const PAD   = 4;
   let out = '';
 
   segs.forEach((s, i) => {
     const x1 = x0 + i * segW;
     const x2 = x1 + segW;
-    const mx = (x1 + x2) / 2;
+    const mx  = (x1 + x2) / 2;
+    const cW  = Math.max(segW - PAD * 2 - 1, 2);
+    const cX  = x1 + PAD;
 
-    // Tooltip data
     const tipData = [
       `${s.joint}  |  ${s.len} m`,
+      `สภาพ: ${s.cond || '—'}`,
+      `SMU Belt: ${s.smu > 0 ? FMT(Math.round(s.smu)) : 'N/A'}`,
       `${s.brand} ${s.type}`.trim() || null,
       `ความหนา: ${s.thick > 0 ? s.thick.toFixed(1) : '—'} mm  |  ความแข็ง: ${s.hardT > 0 ? s.hardT.toFixed(1) : '—'} A`,
-      `SMU Belt: ${s.smu > 0 ? FMT(Math.round(s.smu)) : 'N/A'}`,
       s.dmgList,
-      `สภาพ: ${s.cond || '—'}`,
     ].filter(Boolean).join('||');
 
-    // Segment fill (SMU color)
-    out += `<rect class="bseg" x="${x1.toFixed(1)}" y="${ty}"
-                width="${(segW - 1).toFixed(1)}" height="${th}"
-                fill="${s.color}" fill-opacity="0.9"
+    // Track background — Condition color (tinted)
+    out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
+                fill="${s.trackColor}" fill-opacity="0.28"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Damage marker triangle
+    // Inner card — SMU Belt color
+    out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${cardY}" width="${cW.toFixed(1)}" height="${cardH}"
+                fill="${s.cardColor}" fill-opacity="0.88" rx="3"
+                data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
+
+    // Length label inside card
+    if (segW > 24 && s.len > 0) {
+      out += `<text x="${mx.toFixed(1)}" y="${(cardY + cardH / 2 + 4).toFixed(1)}"
+                  text-anchor="middle" font-size="8" fill="rgba(0,0,0,0.85)"
+                  font-family="Arial,sans-serif" font-weight="bold">${s.len}m</text>`;
+    }
+
+    // Damage marker triangle (outside track)
     if (s.dmg > 0) {
-      const dy  = labsAbove ? ty - 1 : ty + th + 1;
+      const dy  = labsAbove ? ty - 2 : ty + th + 2;
       const dir = labsAbove ? -1 : 1;
       out += `<polygon points="${mx},${dy} ${mx-5},${dy+dir*9} ${mx+5},${dy+dir*9}"
                 fill="#e74c3c" opacity="0.9"><title>ความเสียหาย: ${s.dmg} จุด</title></polygon>`;
     }
 
-    // Separator line between cells
+    // Vertical separator between cells
     out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
-                  stroke="rgba(0,0,0,0.35)" stroke-width="1"/>`;
+                  stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
-    // Length label inside cell
-    if (segW > 28 && s.len > 0) {
-      out += `<text x="${mx.toFixed(1)}" y="${(ty + th / 2 + 3.5).toFixed(1)}"
-                    text-anchor="middle" font-size="7.5"
-                    fill="rgba(0,0,0,0.85)" font-family="Arial,sans-serif"
-                    font-weight="bold">${s.len}m</text>`;
-    }
-
-    // Joint label (alternating above/below for carry, all below for return)
-    const lAbove = labsAbove ? (i % 2 === 0) : false;
-    const lY = lAbove ? ty - 14 : ty + th + 16;
+    // Joint label — all above for carry, all below for return
+    const lY = labsAbove ? ty - 8 : ty + th + 14;
     out += `<text x="${mx.toFixed(1)}" y="${lY}" text-anchor="middle"
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
@@ -395,18 +413,25 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
   // End separator
   const endX = (x0 + pw).toFixed(1);
   out += `<line x1="${endX}" y1="${ty}" x2="${endX}" y2="${ty + th}"
-                stroke="rgba(0,0,0,0.35)" stroke-width="1"/>`;
+                stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
   return out;
 }
 
-// Shared SMU legend HTML
+// Shared legend HTML — two sections: Condition (track bg) + SMU Belt (card)
 const _SMU_LEGEND = `
   <div class="bmap-legend">
-    <span><span class="bmap-dot" style="background:#27ae60"></span>SMU ≤ 15,000</span>
-    <span><span class="bmap-dot" style="background:#f39c12"></span>SMU 15,001–35,000</span>
-    <span><span class="bmap-dot" style="background:#c0392b"></span>SMU > 35,000</span>
-    <span><span class="bmap-dot" style="background:#141414;border:1px solid #333"></span>ไม่มีข้อมูล SMU</span>
-    <span style="margin-left:12px"><span class="bmap-dot" style="background:#e74c3c"></span>มีความเสียหาย ▲</span>
+    <span class="bmap-leg-title">สภาพ Belt (พื้นหลัง):</span>
+    <span><span class="bmap-dot" style="background:#27ae60;opacity:.55"></span>Normal</span>
+    <span><span class="bmap-dot" style="background:#f39c12;opacity:.55"></span>Monitor</span>
+    <span><span class="bmap-dot" style="background:#c0392b;opacity:.55"></span>Alarm</span>
+    <span class="bmap-leg-sep"></span>
+    <span class="bmap-leg-title">SMU Belt (Card):</span>
+    <span><span class="bmap-dot" style="background:#27ae60"></span>≤ 15,000</span>
+    <span><span class="bmap-dot" style="background:#f39c12"></span>15,001–35,000</span>
+    <span><span class="bmap-dot" style="background:#c0392b"></span>> 35,000</span>
+    <span><span class="bmap-dot" style="background:#141414;border:1px solid #333"></span>ไม่มีข้อมูล</span>
+    <span class="bmap-leg-sep"></span>
+    <span><span class="bmap-dot" style="background:#e74c3c"></span>มีความเสียหาย ▲</span>
   </div>`;
 
 function renderBeltMap(name, rows, cols) {
@@ -432,11 +457,11 @@ function renderBeltMap(name, rows, cols) {
 
   if (splitAt !== null && splitAt > 0 && splitAt < rows.length) {
     // ══ TWO-TRACK LOOP MAP (S2B style) ═══════════════════════════
-    const W = 940, H = 275;
+    const W = 940, H = 285;
     const PL = 82, PR = 82, PW = W - PL - PR;
-    const TH = 38;              // track height
-    const TOP_Y = 65;           // carry-side track top edge
-    const BOT_Y = 178;          // return-side track top edge
+    const TH = 44;              // track height (taller to fit card + label)
+    const TOP_Y = 68;           // carry-side track top edge
+    const BOT_Y = 188;          // return-side track top edge
 
     // Carry side: rows 0..splitAt-1  (J7→J18, left=HEAD right=TAIL)
     const topSegs = _buildSegData(rows.slice(0, splitAt), cols);

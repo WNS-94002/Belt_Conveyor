@@ -4,13 +4,13 @@
  */
 
 const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
-// startRow = sheet row where headers begin; endRow = last data row (inclusive)
-// hdrs     = GViz header rows to merge (1 = normal, 2 = main+sub header rows)
+// splitAfterJoint: joint name that is the last segment of the carry (top) side
+// — used to auto-compute the carry/return split from live data
 const LINES = [
-  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
-  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAt: 12,   startRow: 14,   endRow: 32,   hdrs: 2 },
-  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAt: null, startRow: null, endRow: null, hdrs: 1 },
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAfterJoint: null },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAfterJoint: null },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAfterJoint: 'J18' },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAfterJoint: null },
 ];
 
 // SMU Belt → belt age color (green / yellow / red / dark)
@@ -73,6 +73,22 @@ function detectCols(hdr) {
 }
 
 // ══════════════════════════════════════════════
+//  AUTO-DETECT HEADER ROW
+//  Scans GViz cols/rows to find the actual data header
+//  (needed when the sheet has title/decoration rows above the real header)
+// ══════════════════════════════════════════════
+
+function _findHeaderRow(cols, rows) {
+  const KWS = ['no', 'length', 'smu', 'brand', 'condition', 'joint'];
+  const score = arr => KWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
+  if (score(cols) >= 3) return { hdr: cols, dataRows: rows };
+  for (let i = 0; i < Math.min(25, rows.length); i++) {
+    if (score(rows[i]) >= 3) return { hdr: rows[i], dataRows: rows.slice(i + 1) };
+  }
+  return { hdr: cols, dataRows: rows };
+}
+
+// ══════════════════════════════════════════════
 //  DATA FETCHING
 // ══════════════════════════════════════════════
 
@@ -80,12 +96,7 @@ function fetchLine(line) {
   return new Promise((resolve, reject) => {
     const cbName = `_gviz_${line.name}_${Date.now()}`;
     const s = document.createElement('script');
-    // For sheets with title rows, specify range and multi-row headers
-    const rangeEnd  = line.endRow || (line.startRow ? line.startRow + 50 : null);
-    const rangeParam = line.startRow
-      ? `&range=A${line.startRow}:Z${rangeEnd}&headers=${line.hdrs || 1}`
-      : '';
-    s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}${rangeParam}&tqx=out:json&callback=${cbName}`;
+    s.src = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/gviz/tq?gid=${line.gid}&tqx=out:json&callback=${cbName}`;
     let done = false;
     window[cbName] = d => {
       done = true; delete window[cbName]; document.head.removeChild(s);
@@ -98,10 +109,7 @@ function fetchLine(line) {
 }
 
 async function fetchLineFallback(line) {
-  // CSV export: specify range when sheet has title rows above the data header
-  const rangeEnd   = line.endRow || (line.startRow ? line.startRow + 50 : null);
-  const rangeParam = line.startRow ? `&range=A${line.startRow}:Z${rangeEnd}` : '';
-  const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}${rangeParam}`;
+  const url = `https://docs.google.com/spreadsheets/d/${COND_SHEET_ID}/export?format=csv&gid=${line.gid}`;
   const res  = await fetch(url, { mode: 'cors' });
   const text = await res.text();
   if (!text.trim().startsWith('<!')) return parseCSV(text);
@@ -130,10 +138,11 @@ async function loadCondData() {
   results.forEach((r, i) => {
     const line = LINES[i];
     if (r.status === 'fulfilled' && r.value?.rows?.length) {
-      const hdr  = r.value.cols;
+      // Auto-detect which row is the real column header (skips title/decoration rows)
+      const { hdr, dataRows } = _findHeaderRow(r.value.cols, r.value.rows);
       const cols = detectCols(hdr);
-      // Filter out sub-header, empty, and summary (Total) rows
-      const rows = r.value.rows.filter(row => {
+      // Filter out sub-header rows, empty-length rows, and summary rows
+      const rows = dataRows.filter(row => {
         if (cols.length >= 0 && num(row[cols.length]) <= 0) return false;
         if (cols.joint >= 0) {
           const jv = String(row[cols.joint] || '').toLowerCase();
@@ -401,8 +410,15 @@ const _SMU_LEGEND = `
   </div>`;
 
 function renderBeltMap(name, rows, cols) {
-  const line    = LINES.find(l => l.name === name);
-  const splitAt = line?.splitAt ?? null;
+  const line = LINES.find(l => l.name === name);
+
+  // Dynamically find the carry/return split point by joint name
+  let splitAt = null;
+  if (line?.splitAfterJoint && cols.joint >= 0) {
+    const idx = rows.findIndex(r => String(r[cols.joint] || '').trim() === line.splitAfterJoint);
+    if (idx >= 0) splitAt = idx + 1;
+  }
+
   const totalLen = rows.reduce((s, r) => s + num(r[cols.length]), 0);
   const tipId   = `bmapTip-${name}`;
 

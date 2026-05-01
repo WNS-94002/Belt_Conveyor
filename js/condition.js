@@ -347,18 +347,34 @@ function _buildSegData(rows, cols) {
   });
 }
 
-// Render one belt track as SVG elements — EQUAL-WIDTH cells regardless of actual length
+// Render one belt track as SVG elements
 // Track background = Condition color  |  Card inside = SMU Belt color + length value
 // labsAbove  : labels above track (carry) or below (return)
 // capacity   : slot count — both tracks divide same PW
 // rightAlign : data fills from the RIGHT (return track — empty slots on left)
+//
+// Variable slot widths (when capacity set):
+//   Middle slots (non-edge) → 20% narrower than uniform
+//   Edge slots (first/last) → absorb freed space so total PW is unchanged
 function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
-  const slots  = capacity || segs.length;
+  const slots = capacity || segs.length;
   if (!slots) return '';
-  const segW   = pw / slots;
-  const cardH  = Math.round(th * 0.75);   // card fills most of track height
-  const cardY  = ty + Math.round((th - cardH) / 2);
-  const PAD    = 5;
+
+  // Compute variable slot widths
+  const baseW = pw / slots;
+  const isVar = capacity != null && slots >= 3;
+  const midW  = isVar ? baseW * 0.80 : baseW;
+  const edgeW = isVar ? (pw - midW * (slots - 2)) / 2 : baseW;
+  const getW  = i => (i === 0 || i === slots - 1) ? edgeW : midW;
+
+  // Cumulative x-start per slot
+  const slotX = [];
+  let cx = x0;
+  for (let i = 0; i < slots; i++) { slotX.push(cx); cx += getW(i); }
+
+  const cardH = Math.round(th * 0.75);
+  const cardY = ty + Math.round((th - cardH) / 2);
+  const PAD   = 5;
 
   const offset  = (rightAlign && capacity) ? capacity - segs.length : 0;
   const slotArr = Array(slots).fill(null);
@@ -367,23 +383,23 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
   let out = '';
 
   slotArr.forEach((s, slotIdx) => {
-    const x1 = x0 + slotIdx * segW;
-    const x2 = x1 + segW;
-    const mx  = (x1 + x2) / 2;
+    const x1    = slotX[slotIdx];
+    const slotW = getW(slotIdx);
+    const x2    = x1 + slotW;
+    const mx    = (x1 + x2) / 2;
 
     if (!s) {
-      out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
+      out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(slotW - 1).toFixed(1)}" height="${th}"
                   fill="#0c0e14" fill-opacity="0.6"/>`;
       out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
                     stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
       return;
     }
 
-    // Pulley-adjacent slots get a visible stroke border so the card edge is clear
-    // even when the pulley partially overlaps the segment
+    // Edge slots (near pulleys) get a white stroke border so the card is visible
+    // even when the pulley drum partially overlaps the segment
     const isPulley = slotIdx === 0 || slotIdx === slots - 1;
-
-    const cW = Math.max(segW - PAD * 2 - 1, 2);
+    const cW = Math.max(slotW - PAD * 2 - 1, 2);
     const cX = x1 + PAD;
 
     const tipData = [
@@ -396,20 +412,18 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
     ].filter(Boolean).join('||');
 
     // Track background (condition tint)
-    out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
+    out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(slotW - 1).toFixed(1)}" height="${th}"
                 fill="${s.trackColor}" fill-opacity="0.28"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // SMU card — pulley slots get a white border so they're visible behind the pulley
-    const strokeAttr = isPulley
-      ? `stroke="rgba(255,255,255,0.7)" stroke-width="2"`
-      : '';
+    // SMU card
+    const strokeAttr = isPulley ? `stroke="rgba(255,255,255,0.7)" stroke-width="2"` : '';
     out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${cardY}" width="${cW.toFixed(1)}" height="${cardH}"
                 fill="${s.cardColor}" fill-opacity="0.9" rx="3" ${strokeAttr}
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Length text centered in card
-    if (segW > 24 && s.len > 0) {
+    // Length text
+    if (slotW > 24 && s.len > 0) {
       out += `<text x="${mx.toFixed(1)}" y="${(cardY + cardH / 2 + 4).toFixed(1)}"
                   text-anchor="middle" font-size="8" fill="rgba(0,0,0,0.85)"
                   font-family="Arial,sans-serif" font-weight="bold">${s.len}m</text>`;

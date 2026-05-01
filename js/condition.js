@@ -213,11 +213,36 @@ function processLineData(line, raw) {
     return true;
   });
   lineData[line.name] = { hdr, cols, rows };
+  // Update tab dot to worst condition color
+  _updateTabDot(line.name, rows, cols);
   // Render immediately if this is the active tab
   if (line.name === activeLinetab && !renderedLines.has(line.name)) {
     renderOneLine(line.name);
   }
   return rows.length > 0;
+}
+
+// Worst condition across all joints: Alarm > Monitor > Normal
+function _worstCondColor(rows, cols) {
+  if (!rows.length || cols.cond < 0) return null;
+  let alarm = false, monitor = false, normal = false;
+  for (const r of rows) {
+    const c = String(r[cols.cond] || '').trim().toLowerCase();
+    if (c.includes('alarm') || c === 'critical') alarm = true;
+    else if (c === 'monitor') monitor = true;
+    else if (c === 'normal') normal = true;
+  }
+  if (alarm)   return '#e74c3c';
+  if (monitor) return '#f39c12';
+  if (normal)  return '#2ecc71';
+  return null;
+}
+
+function _updateTabDot(name, rows, cols) {
+  const color = _worstCondColor(rows, cols);
+  if (!color) return;
+  const dot = document.getElementById(`ltab-dot-${name}`);
+  if (dot) dot.style.background = color;
 }
 
 function renderOneLine(name) {
@@ -290,7 +315,7 @@ async function loadCondData() {
 function renderConditionShell() {
   document.getElementById('lineTabs').innerHTML = LINES.map(l => `
     <button class="line-tab-btn" id="ltab-${l.name}" onclick="switchLinetab('${l.name}')">
-      <span class="ltab-dot" style="background:${l.color}"></span>${l.name}
+      <span class="ltab-dot" id="ltab-dot-${l.name}" style="background:${l.color}"></span>${l.name}
     </button>`).join('');
 
   document.getElementById('lineContent').innerHTML = LINES.map(l => `
@@ -370,27 +395,21 @@ function renderLineCards(name, rows, cols, color) {
 
   const tColor = avgThick >= 32 ? '#2ecc71' : avgThick >= 28 ? '#f1c40f' : '#e74c3c';
 
-  document.getElementById(`lcards-${name}`).innerHTML = `
-    <div class="mc a2 fi"><div class="mc-inner"><div class="mc-main">
-      <div class="mico">🔗</div><div class="mlbl">จำนวน Joint</div>
-      <div class="mval" style="color:${color}">${rows.length}</div>
-      <div class="munit">joints</div>
-    </div></div></div>
-    <div class="mc a1 fi"><div class="mc-inner"><div class="mc-main">
-      <div class="mico">📐</div><div class="mlbl">ความยาวรวม</div>
-      <div class="mval" style="color:var(--accent)">${FMT(Math.round(totalLen))}</div>
-      <div class="munit">เมตร</div>
-    </div></div></div>
-    <div class="mc a3 fi"><div class="mc-inner"><div class="mc-main">
-      <div class="mico">📏</div><div class="mlbl">ความหนาเฉลี่ย</div>
-      <div class="mval" style="color:${tColor}">${avgThick > 0 ? avgThick.toFixed(1) : '—'}</div>
-      <div class="munit">มิลลิเมตร</div>
-    </div></div></div>
-    <div class="mc a4 fi"><div class="mc-inner"><div class="mc-main">
-      <div class="mico">⚠️</div><div class="mlbl">ความเสียหายรวม</div>
-      <div class="mval" style="color:${totalDmg > 0 ? 'var(--danger)' : 'var(--success)'}">${totalDmg}</div>
-      <div class="munit">จุด</div>
+  const mc = (cls, ico, lbl, val, valStyle, unit) => `
+    <div class="mc ${cls} fi"><div class="mc-inner"><div class="mc-main">
+      <div class="mc-top">
+        <div class="mico">${ico}</div>
+        <div class="mval" style="${valStyle}">${val}</div>
+      </div>
+      <div class="mlbl">${lbl}</div>
+      <div class="munit">${unit}</div>
     </div></div></div>`;
+
+  document.getElementById(`lcards-${name}`).innerHTML =
+    mc('a2', '🔗', 'จำนวน Joint',     rows.length,                              `color:${color}`,                                      'joints') +
+    mc('a1', '📐', 'ความยาวรวม',      FMT(Math.round(totalLen)),                `color:var(--accent)`,                                 'เมตร') +
+    mc('a3', '📏', 'ความหนาเฉลี่ย',   avgThick > 0 ? avgThick.toFixed(1) : '—', `color:${tColor}`,                                     'มิลลิเมตร') +
+    mc('a4', '⚠️', 'ความเสียหายรวม',  totalDmg,                                 `color:${totalDmg > 0 ? 'var(--danger)' : 'var(--success)'}`, 'จุด');
 }
 
 // ══════════════════════════════════════════════
@@ -662,10 +681,11 @@ function renderBeltMap(name, rows, cols) {
       ${el}</svg>`;
   }
 
-  // Render HTML
+  // Render HTML  — line name on top, legend at bottom
   document.getElementById(`bmap-${name}`).innerHTML =
-    `${_SMU_LEGEND}
-     <div style="overflow-x:auto;margin-top:8px">${svgContent}</div>
+    `<div class="bmap-linename">Line ${name}</div>
+     <div style="overflow-x:auto">${svgContent}</div>
+     ${_SMU_LEGEND}
      <div id="${tipId}" class="bmap-tip" style="display:none"></div>`;
 
   // Hover tooltip

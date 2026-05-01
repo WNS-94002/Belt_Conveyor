@@ -171,6 +171,11 @@ body::before {
 .a3::before        { background: var(--success); }
 .a4::before        { background: var(--danger); }
 .a5::before        { background: var(--purple); }
+/* Icon + value side by side */
+.mc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.mc-top .mico { margin-bottom: 0; flex-shrink: 0; }
+.mc-top .mval { font-size: 28px; }
+
 .mico {
   font-size: 17px;
   margin-bottom: 10px;
@@ -441,12 +446,24 @@ a.lpdf:hover { opacity: 1; }
 }
 
 /* ── BELT MAP (SVG schematic) ── */
+.bmap-linename {
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-1);
+  margin-bottom: 6px;
+}
 .bmap-legend {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 .bmap-legend span {
   display: flex;

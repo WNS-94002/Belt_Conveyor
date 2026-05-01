@@ -102,14 +102,21 @@ function _findHeaderRow(cols, rows) {
   const score    = arr => KWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
   const subScore = arr => SUBKWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
 
-  // Merge main header + sub-header row into combined column names
-  // e.g. "Hardness" + "Top" → "Hardness Top",  "" + "L.Edge" → "L.Edge"
-  const merge = (main, sub) => main.map((v, i) => {
-    const m = String(v   || '').trim();
-    const s = String(sub[i] || '').trim();
-    if (m && s) return `${m} ${s}`;
-    return m || s;
-  });
+  // Merge main header + sub-header row into combined column names.
+  // Propagates last non-empty main value across empty siblings (handles GViz merged cells).
+  // e.g. main=["Hardness","","Damage",""] sub=["Top","Bottom","Hole","Cut"]
+  //   → ["Hardness Top","Hardness Bottom","Damage Hole","Damage Cut"]
+  const merge = (main, sub) => {
+    let lastMain = '';
+    return main.map((v, i) => {
+      const m = String(v   || '').trim();
+      const s = String(sub[i] || '').trim();
+      if (m) lastMain = m;
+      const eff = m || (s ? lastMain : '');
+      if (eff && s) return `${eff} ${s}`;
+      return eff || s;
+    });
+  };
 
   const tryMerge = (hdr, nextRow, rest) => {
     if (nextRow && subScore(nextRow) >= 2)

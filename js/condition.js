@@ -348,20 +348,19 @@ function _buildSegData(rows, cols) {
 }
 
 // Render one belt track as SVG elements — EQUAL-WIDTH cells regardless of actual length
-// Track background = Condition color (Column BL)
-// Card inside = SMU Belt color (Column AC) with length value
-// labsAbove  : joint labels above track (carry) or below (return)
-// capacity   : total slot count — both tracks share the same width basis
-// rightAlign : fill slots from the RIGHT so empty slots appear on the LEFT (return track)
+// Track background = Condition color  |  Card inside = SMU Belt color + length value
+// labsAbove  : labels above track (carry) or below (return)
+// capacity   : slot count — both tracks divide same PW
+// rightAlign : data fills from the RIGHT (return track — empty slots on left)
 function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
-  const slots = capacity || segs.length;
+  const slots  = capacity || segs.length;
   if (!slots) return '';
-  const segW  = pw / slots;
-  const cardH = Math.round(th * 0.58);
-  const cardY = ty + Math.round((th - cardH) / 2);
-  const PAD   = 4;
+  const segW   = pw / slots;
+  const cardH  = Math.round(th * 0.40);          // thinner card (was 0.58)
+  const cardY  = ty + Math.round((th - cardH) / 2);
+  const PAD    = 6;                               // wider margin = narrower card
+  const extraH = 20;                              // extension for pulley-adjacent cards
 
-  // Assign segments to slots (right-aligned = data at right end, empties at left)
   const offset  = (rightAlign && capacity) ? capacity - segs.length : 0;
   const slotArr = Array(slots).fill(null);
   segs.forEach((s, i) => { if (offset + i < slots) slotArr[offset + i] = s; });
@@ -374,12 +373,28 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
     const mx  = (x1 + x2) / 2;
 
     if (!s) {
-      // Empty placeholder slot
       out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
                   fill="#0c0e14" fill-opacity="0.6"/>`;
       out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
                     stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
       return;
+    }
+
+    // Pulley-adjacent slots (first / last) get taller cards that extend beyond the track
+    // so the length value is readable even when the pulley overlaps the segment
+    const isPulley = slotIdx === 0 || slotIdx === slots - 1;
+    let thisCH, thisCY;
+    if (isPulley && labsAbove) {
+      // Carry: extend card ABOVE the track (above where pulley tip starts)
+      thisCY = ty - extraH;
+      thisCH = cardH + extraH;
+    } else if (isPulley && !labsAbove) {
+      // Return: extend card BELOW the track (below where pulley tip ends)
+      thisCY = ty + th - cardH;   // bottom-aligned in track
+      thisCH = cardH + extraH;
+    } else {
+      thisCY = cardY;
+      thisCH = cardH;
     }
 
     const cW = Math.max(segW - PAD * 2 - 1, 2);
@@ -394,24 +409,29 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
       s.dmgList,
     ].filter(Boolean).join('||');
 
-    // Track background — Condition color (tinted)
+    // Track background (condition tint)
     out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
                 fill="${s.trackColor}" fill-opacity="0.28"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Inner card — SMU Belt color
-    out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${cardY}" width="${cW.toFixed(1)}" height="${cardH}"
+    // SMU card (may extend beyond track for pulley slots)
+    out += `<rect class="bseg" x="${cX.toFixed(1)}" y="${thisCY}" width="${cW.toFixed(1)}" height="${thisCH}"
                 fill="${s.cardColor}" fill-opacity="0.88" rx="3"
                 data-tip="${tipData}"><title>${tipData.replace(/\|\|/g, '\n')}</title></rect>`;
 
-    // Length label inside card
+    // Length text — placed in the extended (visible) portion for pulley slots
     if (segW > 24 && s.len > 0) {
-      out += `<text x="${mx.toFixed(1)}" y="${(cardY + cardH / 2 + 4).toFixed(1)}"
+      const textY = isPulley && labsAbove
+        ? (thisCY + extraH / 2 + 4).toFixed(1)       // upper extension area (above track)
+        : isPulley && !labsAbove
+          ? (thisCY + cardH + extraH / 2 + 4).toFixed(1) // lower extension area (below track)
+          : (thisCY + thisCH / 2 + 4).toFixed(1);        // normal: centered in card
+      out += `<text x="${mx.toFixed(1)}" y="${textY}"
                   text-anchor="middle" font-size="8" fill="rgba(0,0,0,0.85)"
                   font-family="Arial,sans-serif" font-weight="bold">${s.len}m</text>`;
     }
 
-    // Damage marker triangle (outside track)
+    // Damage marker
     if (s.dmg > 0) {
       const dy  = labsAbove ? ty - 2 : ty + th + 2;
       const dir = labsAbove ? -1 : 1;
@@ -419,12 +439,14 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
                 fill="#e74c3c" opacity="0.9"><title>ความเสียหาย: ${s.dmg} จุด</title></polygon>`;
     }
 
-    // Vertical separator between cells
+    // Vertical separator
     out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
                   stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
-    // Joint label
-    const lY = labsAbove ? ty - 8 : ty + th + 14;
+    // Joint label — shift out when card extends beyond track
+    const lY = labsAbove
+      ? (isPulley ? thisCY - 10 : ty - 8)
+      : (isPulley ? thisCY + thisCH + 12 : ty + th + 14);
     out += `<text x="${mx.toFixed(1)}" y="${lY}" text-anchor="middle"
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
@@ -473,11 +495,11 @@ function renderBeltMap(name, rows, cols) {
 
   if (isTwoTrack) {
     // ══ TWO-TRACK LOOP MAP (S2B style) ═══════════════════════════
-    const W = 940, H = 285;
+    const W = 940, H = 305;
     const PL = 82, PR = 82, PW = W - PL - PR;
-    const TH = 44;              // track height (taller to fit card + label)
-    const TOP_Y = 68;           // carry-side track top edge
-    const BOT_Y = 188;          // return-side track top edge
+    const TH = 44;
+    const TOP_Y = 82;           // carry track — extra top margin for extended cards
+    const BOT_Y = 200;          // return track — extra bottom margin for extended cards
 
     const cap = line.topCapacity;   // slots per track (e.g. 10)
 
@@ -506,10 +528,10 @@ function renderBeltMap(name, rows, cols) {
       el += `<line x1="${PL}" y1="${ty + th}" x2="${PL + PW}" y2="${ty + th}" stroke="#6b7080" stroke-width="1.8"/>`;
     });
 
-    // HEAD / TAIL pulleys — rounder (pRX enlarged for near-circular look)
+    // HEAD / TAIL pulleys — rounder oval (pRX enlarged toward circular)
     const pCY = (TOP_Y + BOT_Y + TH) / 2;
-    const pRY = (BOT_Y + TH - TOP_Y) / 2;   // exact span: top of carry → bottom of return
-    const pRX = 44;                            // wider than before → rounder oval
+    const pRY = (BOT_Y + TH - TOP_Y) / 2;   // spans carry-top → return-bottom exactly
+    const pRX = 55;                            // ratio pRY/pRX ≈ 1.5:1 (visually round)
     [{ cx: PL, lbl: 'HEAD' }, { cx: PL + PW, lbl: 'TAIL' }].forEach(p => {
       el += `<ellipse cx="${p.cx}" cy="${pCY}" rx="${pRX}" ry="${pRY}"
                       fill="#181c27" stroke="#8b90a0" stroke-width="2.5"/>`;

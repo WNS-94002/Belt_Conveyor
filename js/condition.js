@@ -79,11 +79,11 @@ function detectCols(hdr) {
     thickL:  find('l.edge', 'l edge') >= 0 ? find('l.edge', 'l edge') : (edgeAll[0] ?? -1),
     thickR:  find('r.edge', 'r edge') >= 0 ? find('r.edge', 'r edge') : (edgeAll[1] ?? -1),
     thickC:  find('center'),
-    hole:    find('หลุม'),
-    cut:     find('รอยบาด'),
-    tear:    find('รอยฉีก'),
-    crack:   find('รอยแตก'),
-    cond:    find('condition'),
+    hole:    find('หลุม',   'hole'),
+    cut:     find('รอยบาด', 'cut'),
+    tear:    find('รอยฉีก', 'tear'),
+    crack:   find('รอยแตก', 'crack'),
+    cond:    find('condition', 'สภาพ'),
     group:   find('group'),
   };
 }
@@ -95,12 +95,36 @@ function detectCols(hdr) {
 // ══════════════════════════════════════════════
 
 function _findHeaderRow(cols, rows) {
-  const KWS = ['no', 'length', 'smu', 'brand', 'condition', 'joint'];
-  const score = arr => KWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
-  if (score(cols) >= 3) return { hdr: cols, dataRows: rows };
+  const KWS    = ['no', 'length', 'smu', 'brand', 'condition', 'joint'];
+  const SUBKWS = ['top', 'bottom', 'l.edge', 'r.edge', 'edge', 'center',
+                  'hole', 'cut', 'tear', 'crack', 'hardness', 'thickness'];
+
+  const score    = arr => KWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
+  const subScore = arr => SUBKWS.filter(kw => arr.join(' ').toLowerCase().includes(kw)).length;
+
+  // Merge main header + sub-header row into combined column names
+  // e.g. "Hardness" + "Top" → "Hardness Top",  "" + "L.Edge" → "L.Edge"
+  const merge = (main, sub) => main.map((v, i) => {
+    const m = String(v   || '').trim();
+    const s = String(sub[i] || '').trim();
+    if (m && s) return `${m} ${s}`;
+    return m || s;
+  });
+
+  const tryMerge = (hdr, nextRow, rest) => {
+    if (nextRow && subScore(nextRow) >= 2)
+      return { hdr: merge(hdr, nextRow), dataRows: rest };
+    return { hdr, dataRows: nextRow ? [nextRow, ...rest] : rest };
+  };
+
+  if (score(cols) >= 3)
+    return tryMerge(cols, rows[0], rows.slice(1));
+
   for (let i = 0; i < Math.min(25, rows.length); i++) {
-    if (score(rows[i]) >= 3) return { hdr: rows[i], dataRows: rows.slice(i + 1) };
+    if (score(rows[i]) >= 3)
+      return tryMerge(rows[i], rows[i + 1], rows.slice(i + 2));
   }
+
   return { hdr: cols, dataRows: rows };
 }
 

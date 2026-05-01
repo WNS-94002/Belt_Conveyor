@@ -350,23 +350,40 @@ function _buildSegData(rows, cols) {
 // Render one belt track as SVG elements — EQUAL-WIDTH cells regardless of actual length
 // Track background = Condition color (Column BL)
 // Card inside = SMU Belt color (Column AC) with length value
-// labsAbove=true → joint labels above track; false → below
-// capacity: total slot count (track width basis); empty slots shown as placeholders
-function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity) {
+// labsAbove  : joint labels above track (carry) or below (return)
+// capacity   : total slot count — both tracks share the same width basis
+// rightAlign : fill slots from the RIGHT so empty slots appear on the LEFT (return track)
+function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity, rightAlign) {
   const slots = capacity || segs.length;
   if (!slots) return '';
   const segW  = pw / slots;
   const cardH = Math.round(th * 0.58);
   const cardY = ty + Math.round((th - cardH) / 2);
   const PAD   = 4;
+
+  // Assign segments to slots (right-aligned = data at right end, empties at left)
+  const offset  = (rightAlign && capacity) ? capacity - segs.length : 0;
+  const slotArr = Array(slots).fill(null);
+  segs.forEach((s, i) => { if (offset + i < slots) slotArr[offset + i] = s; });
+
   let out = '';
 
-  segs.forEach((s, i) => {
-    const x1 = x0 + i * segW;
+  slotArr.forEach((s, slotIdx) => {
+    const x1 = x0 + slotIdx * segW;
     const x2 = x1 + segW;
     const mx  = (x1 + x2) / 2;
-    const cW  = Math.max(segW - PAD * 2 - 1, 2);
-    const cX  = x1 + PAD;
+
+    if (!s) {
+      // Empty placeholder slot
+      out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
+                  fill="#0c0e14" fill-opacity="0.6"/>`;
+      out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
+                    stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+      return;
+    }
+
+    const cW = Math.max(segW - PAD * 2 - 1, 2);
+    const cX = x1 + PAD;
 
     const tipData = [
       `${s.joint}  |  ${s.len} m`,
@@ -406,20 +423,11 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity) {
     out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
                   stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
 
-    // Joint label — all above for carry, all below for return
+    // Joint label
     const lY = labsAbove ? ty - 8 : ty + th + 14;
     out += `<text x="${mx.toFixed(1)}" y="${lY}" text-anchor="middle"
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
-
-  // Empty placeholder slots (when actual segs < capacity)
-  for (let i = segs.length; i < slots; i++) {
-    const x1 = x0 + i * segW;
-    out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
-                fill="#0c0e14" fill-opacity="0.6"/>`;
-    out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
-                  stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
-  }
 
   // End separator
   const endX = (x0 + pw).toFixed(1);
@@ -483,23 +491,14 @@ function renderBeltMap(name, rows, cols) {
 
     let el = '';
 
-    // Arrow markers
-    el += `<defs>
-      <marker id="aR_${name}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-        <path d="M0,1 L9,5 L0,9 Z" fill="#f07c1f"/>
-      </marker>
-      <marker id="aL_${name}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-        <path d="M10,1 L1,5 L10,9 Z" fill="#3b9ede"/>
-      </marker>
-    </defs>`;
-
     // Track backgrounds
     el += `<rect x="${PL}" y="${TOP_Y}" width="${PW}" height="${TH}" fill="#0c0e14" rx="2"/>`;
     el += `<rect x="${PL}" y="${BOT_Y}" width="${PW}" height="${TH}" fill="#0c0e14" rx="2"/>`;
 
-    // Belt segments + ticks + labels (capacity=cap so both tracks are same width)
-    el += _svgTrack(topSegs, PL, PW, TOP_Y, TH, true,  cap);
-    el += _svgTrack(botSegs, PL, PW, BOT_Y, TH, false, cap);
+    // Carry: left-aligned (J7 at left, closest to HEAD)
+    el += _svgTrack(topSegs, PL, PW, TOP_Y, TH, true,  cap, false);
+    // Return: right-aligned (J17 at right, closest to TAIL; empty slots on left)
+    el += _svgTrack(botSegs, PL, PW, BOT_Y, TH, false, cap, true);
 
     // Rail lines (on top of segments)
     [[TOP_Y, TH], [BOT_Y, TH]].forEach(([ty, th]) => {
@@ -507,32 +506,21 @@ function renderBeltMap(name, rows, cols) {
       el += `<line x1="${PL}" y1="${ty + th}" x2="${PL + PW}" y2="${ty + th}" stroke="#6b7080" stroke-width="1.8"/>`;
     });
 
-    // Head / Tail oval pulleys (connecting both tracks)
-    const pCY  = (TOP_Y + BOT_Y + TH) / 2;
-    const pRY  = (BOT_Y + TH - TOP_Y) / 2 + 8;
-    const pRX  = 20;
+    // HEAD / TAIL pulleys — rounder (pRX enlarged for near-circular look)
+    const pCY = (TOP_Y + BOT_Y + TH) / 2;
+    const pRY = (BOT_Y + TH - TOP_Y) / 2;   // exact span: top of carry → bottom of return
+    const pRX = 44;                            // wider than before → rounder oval
     [{ cx: PL, lbl: 'HEAD' }, { cx: PL + PW, lbl: 'TAIL' }].forEach(p => {
       el += `<ellipse cx="${p.cx}" cy="${pCY}" rx="${pRX}" ry="${pRY}"
                       fill="#181c27" stroke="#8b90a0" stroke-width="2.5"/>`;
-      el += `<ellipse cx="${p.cx}" cy="${pCY}" rx="${pRX * 0.45}" ry="${pRY * 0.45}"
+      el += `<ellipse cx="${p.cx}" cy="${pCY}" rx="${Math.round(pRX * 0.42)}" ry="${Math.round(pRY * 0.42)}"
                       fill="#3a3f52"/>`;
       el += `<text x="${p.cx}" y="${pCY + 4}" text-anchor="middle"
-                   font-size="9" fill="#aab" font-family="Arial,sans-serif"
+                   font-size="10" fill="#c8ccdb" font-family="Arial,sans-serif"
                    font-weight="bold">${p.lbl}</text>`;
     });
 
-    // Direction arrows
-    const midX = PL + PW / 2;
-    el += `<line x1="${midX - 50}" y1="${TOP_Y + TH / 2}"
-                 x2="${midX + 50}" y2="${TOP_Y + TH / 2}"
-                 stroke="#f07c1f" stroke-width="1.5" stroke-opacity="0.45"
-                 marker-end="url(#aR_${name})"/>`;
-    el += `<line x1="${midX + 50}" y1="${BOT_Y + TH / 2}"
-                 x2="${midX - 50}" y2="${BOT_Y + TH / 2}"
-                 stroke="#3b9ede" stroke-width="1.5" stroke-opacity="0.45"
-                 marker-end="url(#aL_${name})"/>`;
-
-    // Summary (total only — no carry/return breakdown)
+    // Summary
     el += `<text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#8b90a0" font-family="Arial,sans-serif">ความยาวรวม ${FMT(Math.round(topTotal + botTotal))} ม. · ${rows.length} Joints</text>`;
 
     svgContent = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg"

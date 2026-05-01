@@ -4,13 +4,13 @@
  */
 
 const COND_SHEET_ID = '1r71wJW-eyhUrDeU-xPS1LApdbfNf7ROb0u4sTeJX_S8';
-// splitAfterJoint: joint name that is the last segment of the carry (top) side
-// — used to auto-compute the carry/return split from live data
+// topCapacity: max joints shown on carry (top) track; remaining joints go to return (bottom)
+// — null = single-track linear layout
 const LINES = [
-  { name: 'S1',  gid: '2113959175', color: '#2ecc71', splitAfterJoint: null },
-  { name: 'S2A', gid: '636893050',  color: '#3b9ede', splitAfterJoint: null },
-  { name: 'S2B', gid: '293227926',  color: '#f07c1f', splitAfterJoint: 'J16' },
-  { name: 'S2C', gid: '298583837',  color: '#9b59b6', splitAfterJoint: null },
+  { name: 'S1',  gid: '2113959175', color: '#2ecc71', topCapacity: null },
+  { name: 'S2A', gid: '636893050',  color: '#3b9ede', topCapacity: null },
+  { name: 'S2B', gid: '293227926',  color: '#f07c1f', topCapacity: 10   },
+  { name: 'S2C', gid: '298583837',  color: '#9b59b6', topCapacity: null },
 ];
 
 // SMU Belt → card color (green / yellow / red / dark)
@@ -351,9 +351,11 @@ function _buildSegData(rows, cols) {
 // Track background = Condition color (Column BL)
 // Card inside = SMU Belt color (Column AC) with length value
 // labsAbove=true → joint labels above track; false → below
-function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
-  if (!segs.length) return '';
-  const segW  = pw / segs.length;
+// capacity: total slot count (track width basis); empty slots shown as placeholders
+function _svgTrack(segs, x0, pw, ty, th, labsAbove, capacity) {
+  const slots = capacity || segs.length;
+  if (!slots) return '';
+  const segW  = pw / slots;
   const cardH = Math.round(th * 0.58);
   const cardY = ty + Math.round((th - cardH) / 2);
   const PAD   = 4;
@@ -410,6 +412,15 @@ function _svgTrack(segs, x0, pw, ty, th, labsAbove) {
                   font-size="9" fill="#cdd0db" font-family="Arial,sans-serif">${s.joint}</text>`;
   });
 
+  // Empty placeholder slots (when actual segs < capacity)
+  for (let i = segs.length; i < slots; i++) {
+    const x1 = x0 + i * segW;
+    out += `<rect x="${x1.toFixed(1)}" y="${ty}" width="${(segW - 1).toFixed(1)}" height="${th}"
+                fill="#0c0e14" fill-opacity="0.6"/>`;
+    out += `<line x1="${x1.toFixed(1)}" y1="${ty}" x2="${x1.toFixed(1)}" y2="${ty + th}"
+                  stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+  }
+
   // End separator
   const endX = (x0 + pw).toFixed(1);
   out += `<line x1="${endX}" y1="${ty}" x2="${endX}" y2="${ty + th}"
@@ -437,12 +448,9 @@ const _SMU_LEGEND = `
 function renderBeltMap(name, rows, cols) {
   const line = LINES.find(l => l.name === name);
 
-  // Dynamically find the carry/return split point by joint name
-  let splitAt = null;
-  if (line?.splitAfterJoint && cols.joint >= 0) {
-    const idx = rows.findIndex(r => String(r[cols.joint] || '').trim() === line.splitAfterJoint);
-    if (idx >= 0) splitAt = idx + 1;
-  }
+  // Two-track loop: first topCapacity rows → carry (top), remainder → return (bottom)
+  const isTwoTrack = line?.topCapacity != null;
+  const splitAt    = isTwoTrack ? Math.min(line.topCapacity, rows.length) : null;
 
   const totalLen = rows.reduce((s, r) => s + num(r[cols.length]), 0);
   const tipId   = `bmapTip-${name}`;
@@ -455,7 +463,7 @@ function renderBeltMap(name, rows, cols) {
 
   let svgContent;
 
-  if (splitAt !== null && splitAt > 0 && splitAt < rows.length) {
+  if (isTwoTrack) {
     // ══ TWO-TRACK LOOP MAP (S2B style) ═══════════════════════════
     const W = 940, H = 285;
     const PL = 82, PR = 82, PW = W - PL - PR;
@@ -463,10 +471,11 @@ function renderBeltMap(name, rows, cols) {
     const TOP_Y = 68;           // carry-side track top edge
     const BOT_Y = 188;          // return-side track top edge
 
-    // Carry side: rows 0..splitAt-1  (J7→J18, left=HEAD right=TAIL)
+    const cap = line.topCapacity;   // slots per track (e.g. 10)
+
+    // Carry: first cap rows (left=HEAD, right=TAIL)
     const topSegs = _buildSegData(rows.slice(0, splitAt), cols);
-    // Return side: rows splitAt..N reversed so HEAD is left, TAIL is right
-    // (J19→J22 reversed = J22,J21,J20,J19 displayed left→right on screen)
+    // Return: remaining rows reversed (screen left→right = physically TAIL→HEAD)
     const botSegs = _buildSegData([...rows.slice(splitAt)].reverse(), cols);
 
     const topTotal = topSegs.reduce((s, seg) => s + seg.len, 0);
@@ -488,9 +497,9 @@ function renderBeltMap(name, rows, cols) {
     el += `<rect x="${PL}" y="${TOP_Y}" width="${PW}" height="${TH}" fill="#0c0e14" rx="2"/>`;
     el += `<rect x="${PL}" y="${BOT_Y}" width="${PW}" height="${TH}" fill="#0c0e14" rx="2"/>`;
 
-    // Belt segments + ticks + labels
-    el += _svgTrack(topSegs, PL, PW, TOP_Y, TH, true);
-    el += _svgTrack(botSegs, PL, PW, BOT_Y, TH, false);
+    // Belt segments + ticks + labels (capacity=cap so both tracks are same width)
+    el += _svgTrack(topSegs, PL, PW, TOP_Y, TH, true,  cap);
+    el += _svgTrack(botSegs, PL, PW, BOT_Y, TH, false, cap);
 
     // Rail lines (on top of segments)
     [[TOP_Y, TH], [BOT_Y, TH]].forEach(([ty, th]) => {

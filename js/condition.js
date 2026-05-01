@@ -249,6 +249,7 @@ function renderOneLine(name) {
   const line = LINES.find(l => l.name === name);
   const { cols, rows } = lineData[name];
   if (!rows.length || renderedLines.has(name)) return;
+  _updateTabDot(name, rows, cols);   // ensure dot reflects condition on render
   renderLineCards(name, rows, cols, line.color);
   renderBeltMap(name, rows, cols);
   renderLineCharts(name, rows, cols, line.color);
@@ -306,6 +307,12 @@ async function loadCondData() {
   }
 
   el('condTxt').textContent = `Connected · Belt Map: ${LINES.map(l => l.name).join(', ')}`;
+
+  // Final pass: ensure all tab dots reflect correct condition color
+  LINES.forEach(l => {
+    const d = lineData[l.name];
+    if (d?.rows?.length && d?.cols) _updateTabDot(l.name, d.rows, d.cols);
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -375,6 +382,9 @@ function switchLinetab(name) {
   });
   // Render ถ้ายังไม่เคย render และมีข้อมูลแล้ว
   if (lineData[name]?.rows.length) renderOneLine(name);
+  // Update dot in case data arrived before tab was shown
+  const d = lineData[name];
+  if (d?.rows?.length && d?.cols) _updateTabDot(name, d.rows, d.cols);
 }
 
 // ══════════════════════════════════════════════

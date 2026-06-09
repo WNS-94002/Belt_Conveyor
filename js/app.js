@@ -476,17 +476,6 @@ function _renderMetrics(data, iQ, iV) {
   const valHTML = BW_DEFS.map(b => { const v = data.filter(b.test).reduce((s,r) => s + num(r[iV]), 0) / 1e6;      return v > 0 ? bwRow(b, v.toFixed(2), 'M฿') : ''; }).join('');
 
   document.getElementById('mgrid').innerHTML = `
-    <div class="mc a1 fi">
-      <div class="mc-inner">
-        <div class="mc-main">
-          <div class="mico">📋</div>
-          <div class="mlbl">รายการทั้งหมด</div>
-          <div class="mval">${data.length}</div>
-          <div class="munit">รายการ</div>
-        </div>
-        <div class="mc-breakdown">${cntHTML}</div>
-      </div>
-    </div>
     <div class="mc a2 fi">
       <div class="mc-inner">
         <div class="mc-main">
